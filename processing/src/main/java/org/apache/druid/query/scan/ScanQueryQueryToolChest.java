@@ -23,9 +23,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.inject.Inject;
+import org.apache.druid.java.util.common.UOE;
 import org.apache.druid.java.util.common.guava.BaseSequence;
 import org.apache.druid.java.util.common.guava.CloseQuietly;
 import org.apache.druid.java.util.common.guava.Sequence;
+import org.apache.druid.java.util.common.guava.Yielder;
+import org.apache.druid.java.util.common.guava.YieldingAccumulator;
 import org.apache.druid.query.GenericQueryMetricsFactory;
 import org.apache.druid.query.Query;
 import org.apache.druid.query.QueryMetrics;
@@ -34,13 +37,15 @@ import org.apache.druid.query.QueryRunner;
 import org.apache.druid.query.QueryToolChest;
 import org.apache.druid.query.aggregation.MetricManipulationFn;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
-public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, ScanQuery>
-{
-  private static final TypeReference<ScanResultValue> TYPE_REFERENCE = new TypeReference<ScanResultValue>()
-  {
+public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, ScanQuery> {
+  private static final TypeReference<ScanResultValue> TYPE_REFERENCE = new TypeReference<ScanResultValue>() {
   };
+  public static final long MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING = 100000;
 
   private final ScanQueryConfig scanQueryConfig;
   private final GenericQueryMetricsFactory queryMetricsFactory;
@@ -49,53 +54,57 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
   public ScanQueryQueryToolChest(
       final ScanQueryConfig scanQueryConfig,
       final GenericQueryMetricsFactory queryMetricsFactory
-  )
-  {
+  ) {
     this.scanQueryConfig = scanQueryConfig;
     this.queryMetricsFactory = queryMetricsFactory;
   }
 
   @Override
-  public QueryRunner<ScanResultValue> mergeResults(final QueryRunner<ScanResultValue> runner)
-  {
-    return new QueryRunner<ScanResultValue>()
-    {
-      @Override
-      public Sequence<ScanResultValue> run(
-          final QueryPlus<ScanResultValue> queryPlus, final Map<String, Object> responseContext
-      )
-      {
-        // Ensure "legacy" is a non-null value, such that all other nodes this query is forwarded to will treat it
-        // the same way, even if they have different default legacy values.
-        final ScanQuery scanQuery = ((ScanQuery) queryPlus.getQuery()).withNonNullLegacy(scanQueryConfig);
-        final QueryPlus<ScanResultValue> queryPlusWithNonNullLegacy = queryPlus.withQuery(scanQuery);
+  public QueryRunner<ScanResultValue> mergeResults(final QueryRunner<ScanResultValue> runner) {
+    return (queryPlus, responseContext) -> {
+      // Ensure "legacy" is a non-null value, such that all other nodes this query is forwarded to will treat it
+      // the same way, even if they have different default legacy values.
+      final ScanQuery scanQuery = ((ScanQuery) queryPlus.getQuery()).withNonNullLegacy(scanQueryConfig);
+      final QueryPlus<ScanResultValue> queryPlusWithNonNullLegacy = queryPlus.withQuery(scanQuery);
 
+      BaseSequence.IteratorMaker scanQueryLimitRowIteratorMaker =
+          new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryLimitRowIterator>() {
+            @Override
+            public ScanQueryLimitRowIterator make() {
+              return new ScanQueryLimitRowIterator(runner, queryPlusWithNonNullLegacy, responseContext);
+            }
+
+            @Override
+            public void cleanup(ScanQueryLimitRowIterator iterFromMake) {
+              CloseQuietly.close(iterFromMake);
+            }
+          };
+
+      Sequence baseSequence = new BaseSequence<>(scanQueryLimitRowIteratorMaker);
+
+      if (scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_NONE) ||
+          scanQuery.getLimit() > MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING) {
         if (scanQuery.getLimit() == Long.MAX_VALUE) {
           return runner.run(queryPlusWithNonNullLegacy, responseContext);
         }
-        return new BaseSequence<>(
-            new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryLimitRowIterator>()
-            {
-              @Override
-              public ScanQueryLimitRowIterator make()
-              {
-                return new ScanQueryLimitRowIterator(runner, queryPlusWithNonNullLegacy, responseContext);
-              }
+        return baseSequence;
+      } else if (scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_ASCENDING) ||
+          scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_DESCENDING)) {
+        /* Implement time ordering here */
+        PriorityQueue<>
+        Iterator rowIterator = scanQueryLimitRowIteratorMaker.make();
+        while (rowIterator.hasNext()) {
 
-              @Override
-              public void cleanup(ScanQueryLimitRowIterator iterFromMake)
-              {
-                CloseQuietly.close(iterFromMake);
-              }
-            }
-        );
+        }
+        return null;
+      } else {
+        throw new UOE("Time ordering [%s] is not supported", scanQuery.getTimeOrder());
       }
     };
   }
 
   @Override
-  public QueryMetrics<Query<?>> makeMetrics(ScanQuery query)
-  {
+  public QueryMetrics<Query<?>> makeMetrics(ScanQuery query) {
     return queryMetricsFactory.makeMetrics(query);
   }
 
@@ -103,25 +112,20 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
   public Function<ScanResultValue, ScanResultValue> makePreComputeManipulatorFn(
       ScanQuery query,
       MetricManipulationFn fn
-  )
-  {
+  ) {
     return Functions.identity();
   }
 
   @Override
-  public TypeReference<ScanResultValue> getResultTypeReference()
-  {
+  public TypeReference<ScanResultValue> getResultTypeReference() {
     return TYPE_REFERENCE;
   }
 
   @Override
-  public QueryRunner<ScanResultValue> preMergeQueryDecoration(final QueryRunner<ScanResultValue> runner)
-  {
-    return new QueryRunner<ScanResultValue>()
-    {
+  public QueryRunner<ScanResultValue> preMergeQueryDecoration(final QueryRunner<ScanResultValue> runner) {
+    return new QueryRunner<ScanResultValue>() {
       @Override
-      public Sequence<ScanResultValue> run(QueryPlus<ScanResultValue> queryPlus, Map<String, Object> responseContext)
-      {
+      public Sequence<ScanResultValue> run(QueryPlus<ScanResultValue> queryPlus, Map<String, Object> responseContext) {
         ScanQuery scanQuery = (ScanQuery) queryPlus.getQuery();
         if (scanQuery.getFilter() != null) {
           scanQuery = scanQuery.withDimFilter(scanQuery.getFilter().optimize());
