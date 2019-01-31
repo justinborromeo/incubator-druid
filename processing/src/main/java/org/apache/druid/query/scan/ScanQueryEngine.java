@@ -53,14 +53,16 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
-public class ScanQueryEngine {
+public class ScanQueryEngine
+{
   private static final String LEGACY_TIMESTAMP_KEY = "timestamp";
 
   public Sequence<ScanResultValue> process(
       final ScanQuery query,
       final Segment segment,
       final Map<String, Object> responseContext
-  ) {
+  )
+  {
     // "legacy" should be non-null due to toolChest.mergeResults
     final boolean legacy = Preconditions.checkNotNull(query.isLegacy(), "WTF?! Expected non-null legacy");
 
@@ -130,13 +132,15 @@ public class ScanQueryEngine {
                 query.getVirtualColumns(),
                 Granularities.ALL,
                 query.getTimeOrder().equals(ScanQuery.TIME_ORDER_DESCENDING) ||
-                    query.getTimeOrder().equals(ScanQuery.TIME_ORDER_NONE),
+                query.getTimeOrder().equals(ScanQuery.TIME_ORDER_NONE),
                 null
             )
             .map(cursor -> new BaseSequence<>(
-                new BaseSequence.IteratorMaker<ScanResultValue, Iterator<ScanResultValue>>() {
+                new BaseSequence.IteratorMaker<ScanResultValue, Iterator<ScanResultValue>>()
+                {
                   @Override
-                  public Iterator<ScanResultValue> make() {
+                  public Iterator<ScanResultValue> make()
+                  {
                     final List<BaseObjectColumnValueSelector> columnSelectors = new ArrayList<>(allColumns.size());
 
                     for (String column : allColumns) {
@@ -144,7 +148,7 @@ public class ScanQueryEngine {
 
                       if (legacy && LEGACY_TIMESTAMP_KEY.equals(column)) {
                         selector = cursor.getColumnSelectorFactory()
-                            .makeColumnValueSelector(ColumnHolder.TIME_COLUMN_NAME);
+                                         .makeColumnValueSelector(ColumnHolder.TIME_COLUMN_NAME);
                       } else {
                         selector = cursor.getColumnSelectorFactory().makeColumnValueSelector(column);
                       }
@@ -153,16 +157,19 @@ public class ScanQueryEngine {
                     }
 
                     final int batchSize = query.getBatchSize();
-                    return new Iterator<ScanResultValue>() {
+                    return new Iterator<ScanResultValue>()
+                    {
                       private long offset = 0;
 
                       @Override
-                      public boolean hasNext() {
+                      public boolean hasNext()
+                      {
                         return !cursor.isDone() && offset < limit;
                       }
 
                       @Override
-                      public ScanResultValue next() {
+                      public ScanResultValue next()
+                      {
                         if (!hasNext()) {
                           throw new NoSuchElementException();
                         }
@@ -193,11 +200,13 @@ public class ScanQueryEngine {
                       }
 
                       @Override
-                      public void remove() {
+                      public void remove()
+                      {
                         throw new UnsupportedOperationException();
                       }
 
-                      private List<Object> rowsToCompactedList() {
+                      private List<Object> rowsToCompactedList()
+                      {
                         final List<Object> events = new ArrayList<>(batchSize);
                         final long iterLimit = Math.min(limit, offset + batchSize);
                         for (; !cursor.isDone() && offset < iterLimit; cursor.advance(), offset++) {
@@ -210,7 +219,8 @@ public class ScanQueryEngine {
                         return events;
                       }
 
-                      private List<Map<String, Object>> rowsToList() {
+                      private List<Map<String, Object>> rowsToList()
+                      {
                         List<Map<String, Object>> events = Lists.newArrayListWithCapacity(batchSize);
                         final long iterLimit = Math.min(limit, offset + batchSize);
                         for (; !cursor.isDone() && offset < iterLimit; cursor.advance(), offset++) {
@@ -223,7 +233,8 @@ public class ScanQueryEngine {
                         return events;
                       }
 
-                      private Object getColumnValue(int i) {
+                      private Object getColumnValue(int i)
+                      {
                         final BaseObjectColumnValueSelector selector = columnSelectors.get(i);
                         final Object value;
 
@@ -239,7 +250,8 @@ public class ScanQueryEngine {
                   }
 
                   @Override
-                  public void cleanup(Iterator<ScanResultValue> iterFromMake) {
+                  public void cleanup(Iterator<ScanResultValue> iterFromMake)
+                  {
                   }
                 }
             ))

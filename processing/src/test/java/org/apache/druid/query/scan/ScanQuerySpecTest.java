@@ -70,6 +70,7 @@ public class ScanQuerySpecTest
         null,
         Arrays.asList("market", "quality", "index"),
         null,
+        null,
         null
     );
 

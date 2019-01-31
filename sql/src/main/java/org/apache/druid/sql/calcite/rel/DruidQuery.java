@@ -967,7 +967,8 @@ public class DruidQuery
         filtration.getDimFilter(),
         Ordering.natural().sortedCopy(ImmutableSet.copyOf(outputRowSignature.getRowOrder())),
         false,
-        ImmutableSortedMap.copyOf(plannerContext.getQueryContext())
+        ImmutableSortedMap.copyOf(plannerContext.getQueryContext()),
+        null /* TODO make this non-null */
     );
   }
 
