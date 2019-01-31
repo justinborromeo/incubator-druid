@@ -37,6 +37,7 @@ import org.apache.druid.query.QueryToolChest;
 import org.apache.druid.query.aggregation.MetricManipulationFn;
 import org.apache.druid.segment.column.ColumnHolder;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -98,41 +99,62 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
         return baseSequence;
       } else if (scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_ASCENDING) ||
                  scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_DESCENDING)) {
-        Comparator<Map<String, Object>> comparator = (val1, val2) -> {
-          int comparison = Longs.compare(
-              (Long) val1.get(ColumnHolder.TIME_COLUMN_NAME),
-              (Long) val2.get(ColumnHolder.TIME_COLUMN_NAME)
-          );
+        Comparator priorityQComparator = (val1, val2) -> {
+          int comparison;
+          ScanResultValue val1SRV = (ScanResultValue) val1,
+              val2SRV = (ScanResultValue) val2;
+          if (scanQuery.getResultFormat().equals(ScanQuery.RESULT_FORMAT_LIST)) {
+            comparison = Longs.compare(
+               (Long)((Map<String, Object>)((List) val1SRV.getEvents()).get(0)).get(ColumnHolder.TIME_COLUMN_NAME),
+               (Long)((Map<String, Object>)((List) val2SRV.getEvents()).get(0)).get(ColumnHolder.TIME_COLUMN_NAME)
+            );
+          } else if (scanQuery.getResultFormat().equals(ScanQuery.RESULT_FORMAT_COMPACTED_LIST)) {
+            int val1TimeColumnIndex = val1SRV.getColumns().indexOf(ColumnHolder.TIME_COLUMN_NAME);
+            int val2TimeColumnIndex = val2SRV.getColumns().indexOf(ColumnHolder.TIME_COLUMN_NAME);
+            List<Object> event1 = (List<Object>)((List<Object>) val1SRV.getEvents()).get(0);
+            List<Object> event2 = (List<Object>)((List<Object>) val2SRV.getEvents()).get(0);
+            comparison = Longs.compare(
+                (Long) event1.get(val1TimeColumnIndex),
+                (Long) event2.get(val2TimeColumnIndex)
+            );
+          } else {
+            throw new UOE("Result format [%s] is not supported", scanQuery.getResultFormat());
+          }
           if (scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_DESCENDING)) {
             return comparison * -1;
-          } else {
-            return comparison;
           }
+          return comparison;
         };
+
+
+
         // Converting the limit from long to int could theoretically throw an ArithmeticException but this branch
-        // only runs if limit < MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING (which is < Integer.MAX_VALUE)
-        PriorityQueue<Map<String, Object>> q = new PriorityQueue<>(Math.toIntExact(scanQuery.getLimit()), comparator);
-        Iterator<ScanResultValue> rowIterator = scanQueryLimitRowIteratorMaker.make();
-        while (rowIterator.hasNext()) {
-          List<Map<String, Object>> events = (List<Map<String, Object>>) rowIterator.next().getEvents();
-          for (Map<String, Object> event : events) {
-            q.offer(event);
+        // only runs if limit < MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING (which should be < Integer.MAX_VALUE)
+        PriorityQueue<Object> q = new PriorityQueue<>(Math.toIntExact(scanQuery.getLimit()), priorityQComparator);
+        Iterator<ScanResultValue> scanResultIterator = scanQueryLimitRowIteratorMaker.make();
+        while (scanResultIterator.hasNext()) {
+          ScanResultValue next = scanResultIterator.next();
+          List<Object> events = (List<Object>) next.getEvents();
+          for (Object event : events) {
+            // Using an intermediate unbatched ScanResultValue is not that great memory-wise, but the column list
+            // needs to be preserved for queries using the compactedList result format
+            q.offer(new ScanResultValue(null, next.getColumns(), Collections.singletonList(event)));
           }
         }
 
         Iterator queueIterator = q.iterator();
 
         return new BaseSequence(
-            new BaseSequence.IteratorMaker<ScanResultValue, QueueIterator>()
+            new BaseSequence.IteratorMaker<ScanResultValue, ScanBatchedTimeOrderedQueueIterator>()
             {
               @Override
-              public QueueIterator make()
+              public ScanBatchedTimeOrderedQueueIterator make()
               {
-                return new QueueIterator(queueIterator);
+                return new ScanBatchedTimeOrderedQueueIterator(queueIterator, scanQuery.getBatchSize());
               }
 
               @Override
-              public void cleanup(QueueIterator iterFromMake)
+              public void cleanup(ScanBatchedTimeOrderedQueueIterator iterFromMake)
               {
                 CloseQuietly.close(iterFromMake);
               }

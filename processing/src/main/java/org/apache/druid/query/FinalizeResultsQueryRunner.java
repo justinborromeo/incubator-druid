@@ -31,6 +31,7 @@ import org.apache.druid.query.aggregation.MetricManipulatorFns;
 import java.util.Map;
 
 /**
+ *
  */
 public class FinalizeResultsQueryRunner<T> implements QueryRunner<T>
 {

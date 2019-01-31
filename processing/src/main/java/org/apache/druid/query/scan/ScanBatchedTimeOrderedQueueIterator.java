@@ -21,23 +21,27 @@
 package org.apache.druid.query.scan;
 
 import org.apache.druid.java.util.common.parsers.CloseableIterator;
+import org.apache.druid.java.util.emitter.core.Event;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
-public class QueueIterator implements CloseableIterator<ScanResultValue>
+public class ScanBatchedTimeOrderedQueueIterator implements CloseableIterator<ScanResultValue>
 {
   private final Iterator<ScanResultValue> itr;
+  private final int batchSize;
 
-  public QueueIterator(Iterator iterator)
+  public ScanBatchedTimeOrderedQueueIterator(Iterator<ScanResultValue> iterator, int batchSize)
   {
     itr = iterator;
+    this.batchSize = batchSize;
   }
 
   @Override
   public void close() throws IOException
   {
-
   }
 
   @Override
@@ -49,6 +53,15 @@ public class QueueIterator implements CloseableIterator<ScanResultValue>
   @Override
   public ScanResultValue next()
   {
-    return itr.next();
+    // Create new scanresultvalue from event map
+    List<Object> eventsToAdd = new ArrayList<>(batchSize);
+    List<String> columns = new ArrayList<>();
+    while (eventsToAdd.size() < batchSize && itr.hasNext()) {
+      ScanResultValue srv = itr.next();
+      // Only replace once using the columns from the first event
+      columns = columns.isEmpty() ? srv.getColumns() : columns;
+      eventsToAdd.add(((List)srv.getEvents()).get(0));
+    }
+    return new ScanResultValue(null, columns, eventsToAdd);
   }
 }
