@@ -217,7 +217,7 @@ public class ScanQueryRunnerTest
         .resultFormat(ScanQuery.RESULT_FORMAT_COMPACTED_LIST)
         .build();
 
-    HashMap<String, Object> context = new HashMap<String, Object>();
+    HashMap<String, Object> context = new HashMap<>();
     Iterable<ScanResultValue> results = runner.run(QueryPlus.wrap(query), context).toList();
 
     List<ScanResultValue> expectedResults = toExpected(
@@ -237,7 +237,7 @@ public class ScanQueryRunnerTest
         .columns(ColumnHolder.TIME_COLUMN_NAME, QueryRunnerTestHelper.marketDimension, QueryRunnerTestHelper.indexMetric)
         .build();
 
-    HashMap<String, Object> context = new HashMap<String, Object>();
+    HashMap<String, Object> context = new HashMap<>();
     Iterable<ScanResultValue> results = runner.run(QueryPlus.wrap(query), context).toList();
 
     final List<List<Map<String, Object>>> expectedEvents = toEvents(

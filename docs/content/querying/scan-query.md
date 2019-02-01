@@ -59,7 +59,8 @@ The following are the main parameters for Scan queries:
 |batchSize|How many rows buffered before return to client. Default is `20480`|no|
 |timeOrder|The ordering of returned rows based on timestamp.  "ascending", "descending", and "none" (default) are supported.
 Currently, "ascending" and "descending" are only supported for queries where the limit is less than 100K.  Scan
-queries with limits greater than 100K will not be time-ordered and default to a timeOrder of "none". |no|
+queries that are either legacy mode or have a limit greater than 100K will not be time-ordered and default to a
+ timeOrder of "none". |no|
 |limit|How many rows to return. If not specified, all rows will be returned.|no|
 |legacy|Return results consistent with the legacy "scan-query" contrib extension. Defaults to the value set by `druid.query.scan.legacy`, which in turn defaults to false. See [Legacy mode](#legacy-mode) for details.|no|
 |context|An additional JSON Object which can be used to specify certain flags.|no|
@@ -186,10 +187,9 @@ The format of the result when resultFormat equals to `compactedList`:
 
 ## Time Ordering
 
-The Scan query currently supports ordering based on timestamp for queries where the limit is less than 100 thousand
+The Scan query currently supports ordering based on timestamp for non-legacy queries where the limit is less than 100 thousand
 rows.  The reasoning for this limit is that the current implementation buffers all returned records in memory before
-sorting; attempting to load more rows than the threshold into memory increases the risk of causing an OutOfMemory
-error on Broker nodes.
+sorting; attempting to load more rows than that threshold into memory runs the risk of Broker nodes running out of memory.
 
 ## Legacy mode
 
