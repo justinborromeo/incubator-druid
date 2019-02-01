@@ -33,6 +33,14 @@ public class ScanQueryConfig
     return legacy;
   }
 
+  // int should suffice here because no one should be sorting greater than 2B rows in memory
+  @JsonProperty
+  private int maxRowsTimeOrderedInMemory = 100000;
+
+  public int getMaxRowsTimeOrderedInMemory() {
+    return maxRowsTimeOrderedInMemory;
+  }
+
   @SuppressWarnings("unused") // Used by Jackson deserialization?
   public ScanQueryConfig setLegacy(final boolean legacy)
   {

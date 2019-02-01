@@ -27,7 +27,7 @@ import com.google.inject.Inject;
 import org.apache.druid.java.util.common.UOE;
 import org.apache.druid.java.util.common.guava.BaseSequence;
 import org.apache.druid.java.util.common.guava.CloseQuietly;
-import org.apache.druid.java.util.common.guava.Sequence;
+import org.apache.druid.java.util.common.parsers.CloseableIterator;
 import org.apache.druid.query.GenericQueryMetricsFactory;
 import org.apache.druid.query.Query;
 import org.apache.druid.query.QueryMetrics;
@@ -37,6 +37,8 @@ import org.apache.druid.query.QueryToolChest;
 import org.apache.druid.query.aggregation.MetricManipulationFn;
 import org.apache.druid.segment.column.ColumnHolder;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -49,10 +51,10 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
   private static final TypeReference<ScanResultValue> TYPE_REFERENCE = new TypeReference<ScanResultValue>()
   {
   };
-  public static final long MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING = 100000;
 
   private final ScanQueryConfig scanQueryConfig;
   private final GenericQueryMetricsFactory queryMetricsFactory;
+  private final long maxRowsForInMemoryTimeOrdering;
 
   @Inject
   public ScanQueryQueryToolChest(
@@ -62,6 +64,7 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
   {
     this.scanQueryConfig = scanQueryConfig;
     this.queryMetricsFactory = queryMetricsFactory;
+    this.maxRowsForInMemoryTimeOrdering = scanQueryConfig.getMaxRowsTimeOrderedInMemory();
   }
 
   @Override
@@ -89,14 +92,12 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
             }
           };
 
-      Sequence baseSequence = new BaseSequence<>(scanQueryLimitRowIteratorMaker);
-
       if (scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_NONE) ||
-          scanQuery.getLimit() > MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING) {
+          scanQuery.getLimit() > maxRowsForInMemoryTimeOrdering) {
         if (scanQuery.getLimit() == Long.MAX_VALUE) {
           return runner.run(queryPlusWithNonNullLegacy, responseContext);
         }
-        return baseSequence;
+        return new BaseSequence<>(scanQueryLimitRowIteratorMaker);
       } else if (scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_ASCENDING) ||
                  scanQuery.getTimeOrder().equals(ScanQuery.TIME_ORDER_DESCENDING)) {
         Comparator priorityQComparator = (val1, val2) -> {
@@ -196,4 +197,43 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
       return runner.run(queryPlus, responseContext);
     };
   }
+
+  private class ScanBatchedTimeOrderedQueueIterator implements CloseableIterator<ScanResultValue>
+  {
+    private final Iterator<ScanResultValue> itr;
+    private final int batchSize;
+
+    public ScanBatchedTimeOrderedQueueIterator(Iterator<ScanResultValue> iterator, int batchSize)
+    {
+      itr = iterator;
+      this.batchSize = batchSize;
+    }
+
+    @Override
+    public void close() throws IOException
+    {
+    }
+
+    @Override
+    public boolean hasNext()
+    {
+      return itr.hasNext();
+    }
+
+    @Override
+    public ScanResultValue next()
+    {
+      // Create new scanresultvalue from event map
+      List<Object> eventsToAdd = new ArrayList<>(batchSize);
+      List<String> columns = new ArrayList<>();
+      while (eventsToAdd.size() < batchSize && itr.hasNext()) {
+        ScanResultValue srv = itr.next();
+        // Only replace once using the columns from the first event
+        columns = columns.isEmpty() ? srv.getColumns() : columns;
+        eventsToAdd.add(((List) srv.getEvents()).get(0));
+      }
+      return new ScanResultValue(null, columns, eventsToAdd);
+    }
+  }
+
 }
