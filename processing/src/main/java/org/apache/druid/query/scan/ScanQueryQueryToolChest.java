@@ -126,8 +126,6 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
           return comparison;
         };
 
-
-
         // Converting the limit from long to int could theoretically throw an ArithmeticException but this branch
         // only runs if limit < MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING (which should be < Integer.MAX_VALUE)
         PriorityQueue<Object> q = new PriorityQueue<>(Math.toIntExact(scanQuery.getLimit()), priorityQComparator);

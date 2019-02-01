@@ -60,7 +60,7 @@ public class ScanBatchedTimeOrderedQueueIterator implements CloseableIterator<Sc
       ScanResultValue srv = itr.next();
       // Only replace once using the columns from the first event
       columns = columns.isEmpty() ? srv.getColumns() : columns;
-      eventsToAdd.add(((List)srv.getEvents()).get(0));
+      eventsToAdd.add(((List) srv.getEvents()).get(0));
     }
     return new ScanResultValue(null, columns, eventsToAdd);
   }

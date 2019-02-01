@@ -24,7 +24,13 @@ title: "Scan query"
 
 # Scan query
 
-Scan query returns raw Druid rows in streaming mode.
+The Scan query returns raw Druid rows in streaming mode.  The biggest difference between the Select query and the Scan
+query is that the Scan query does not retain all the returned rows in memory before they are returned to the client
+(except when time-ordering is used).  The Select query _will_ retain the rows in memory, causing memory pressure if too
+many rows are returned.  The Scan query can return all the rows without issuing another pagination query, which is
+extremely useful when querying against historical or realtime node directly.
+
+An example Scan query object is shown below:
 
 ```json
  {
@@ -40,17 +46,20 @@ Scan query returns raw Druid rows in streaming mode.
  }
 ```
 
-There are several main parts to a scan query:
+The following are the main parameters for Scan queries:
 
 |property|description|required?|
 |--------|-----------|---------|
 |queryType|This String should always be "scan"; this is the first thing Druid looks at to figure out how to interpret the query|yes|
 |dataSource|A String or Object defining the data source to query, very similar to a table in a relational database. See [DataSource](../querying/datasource.html) for more information.|yes|
 |intervals|A JSON Object representing ISO-8601 Intervals. This defines the time ranges to run the query over.|yes|
-|resultFormat|How result represented, list or compactedList or valueVector. Currently only `list` and `compactedList` are supported. Default is `list`|no|
+|resultFormat|How result is represented, list or compactedList or valueVector. Currently only `list` and `compactedList` are supported. Default is `list`|no|
 |filter|See [Filters](../querying/filters.html)|no|
 |columns|A String array of dimensions and metrics to scan. If left empty, all dimensions and metrics are returned.|no|
 |batchSize|How many rows buffered before return to client. Default is `20480`|no|
+|timeOrder|The ordering of returned rows based on timestamp.  "ascending", "descending", and "none" (default) are supported.
+Currently, "ascending" and "descending" are only supported for queries where the limit is less than 100K.  Scan
+queries with limits greater than 100K will not be time-ordered and default to a timeOrder of "none". |no|
 |limit|How many rows to return. If not specified, all rows will be returned.|no|
 |legacy|Return results consistent with the legacy "scan-query" contrib extension. Defaults to the value set by `druid.query.scan.legacy`, which in turn defaults to false. See [Legacy mode](#legacy-mode) for details.|no|
 |context|An additional JSON Object which can be used to specify certain flags.|no|
@@ -175,10 +184,12 @@ The format of the result when resultFormat equals to `compactedList`:
 } ]
 ```
 
-The biggest difference between select query and scan query is that, scan query doesn't retain all rows in memory before rows can be returned to client.  
-It will cause memory pressure if too many rows required by select query.  
-Scan query doesn't have this issue.  
-Scan query can return all rows without issuing another pagination query, which is extremely useful when query against historical or realtime node directly.
+## Time Ordering
+
+The Scan query currently supports ordering based on timestamp for queries where the limit is less than 100 thousand
+rows.  The reasoning for this limit is that the current implementation buffers all returned records in memory before
+sorting; attempting to load more rows than the threshold into memory increases the risk of causing an OutOfMemory
+error on Broker nodes.
 
 ## Legacy mode
 
