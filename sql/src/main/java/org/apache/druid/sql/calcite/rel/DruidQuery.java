@@ -62,6 +62,7 @@ import org.apache.druid.query.groupby.orderby.OrderByColumnSpec;
 import org.apache.druid.query.ordering.StringComparator;
 import org.apache.druid.query.ordering.StringComparators;
 import org.apache.druid.query.scan.ScanQuery;
+import org.apache.druid.query.scan.ScanQueryQueryToolChest;
 import org.apache.druid.query.select.PagingSpec;
 import org.apache.druid.query.select.SelectQuery;
 import org.apache.druid.query.timeseries.TimeseriesQuery;
@@ -956,6 +957,19 @@ public class DruidQuery
     final long scanLimit = limitSpec == null || limitSpec.getLimit() == Integer.MAX_VALUE
                            ? 0L
                            : (long) limitSpec.getLimit();
+    final OrderByColumnSpec orderBy = Iterables.getOnlyElement(limitSpec.getColumns());
+    if (!orderBy.getDimension().equals(ColumnHolder.TIME_COLUMN_NAME)) {
+      // Scan cannot handle sorting on anything other than __time.
+      return null;
+    }
+    String timeOrder;
+    if (scanLimit < ScanQueryQueryToolChest.MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING) {
+      timeOrder = ScanQuery.TIME_ORDER_NONE;
+    } else if (orderBy.getDirection() == OrderByColumnSpec.Direction.DESCENDING) {
+      timeOrder = ScanQuery.TIME_ORDER_DESCENDING;
+    } else {
+      timeOrder = ScanQuery.TIME_ORDER_ASCENDING;
+    }
 
     return new ScanQuery(
         dataSource,
@@ -968,7 +982,7 @@ public class DruidQuery
         Ordering.natural().sortedCopy(ImmutableSet.copyOf(outputRowSignature.getRowOrder())),
         false,
         ImmutableSortedMap.copyOf(plannerContext.getQueryContext()),
-        null /* TODO make this non-null */
+        timeOrder
     );
   }
 
