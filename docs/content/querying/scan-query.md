@@ -64,7 +64,7 @@ The following are the main parameters for Scan queries:
 
 ## Example results
 
-The format of the result when resultFormat equals to `list`:
+The format of the result when resultFormat equals `list`:
 
 ```json
  [{
@@ -134,7 +134,7 @@ The format of the result when resultFormat equals to `list`:
 } ]
 ```
 
-The format of the result when resultFormat equals to `compactedList`:
+The format of the result when resultFormat equals `compactedList`:
 
 ```json
  [{

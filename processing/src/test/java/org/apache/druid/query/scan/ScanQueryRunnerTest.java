@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.Sets;
 import com.google.common.hash.Hashing;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.druid.hll.HyperLogLogCollector;
 import org.apache.druid.java.util.common.DateTimes;
 import org.apache.druid.java.util.common.ISE;
@@ -175,48 +176,6 @@ public class ScanQueryRunnerTest
         .virtualColumns(EXPR_COLUMN)
         .build();
 
-    HashMap<String, Object> context = new HashMap<String, Object>();
-    Iterable<ScanResultValue> results = runner.run(QueryPlus.wrap(query), context).toList();
-
-    List<ScanResultValue> expectedResults = toExpected(
-        toFullEvents(V_0112_0114),
-        columns,
-        0,
-        3
-    );
-    verify(expectedResults, populateNullColumnAtLastForQueryableIndexCase(results, "null_column"));
-  }
-
-  @Test
-  public void testFullOnSelectAsCompactedList()
-  {
-    final List<String> columns = Lists.newArrayList(
-        getTimestampName(),
-        "expr",
-        "market",
-        "quality",
-        "qualityLong",
-        "qualityFloat",
-        "qualityDouble",
-        "qualityNumericString",
-        "placement",
-        "placementish",
-        "partial_null_column",
-        "null_column",
-        "index",
-        "indexMin",
-        "indexMaxPlusTen",
-        "quality_uniques",
-        "indexFloat",
-        "indexMaxFloat",
-        "indexMinFloat"
-    );
-    ScanQuery query = newTestQuery()
-        .intervals(I_0112_0114)
-        .virtualColumns(EXPR_COLUMN)
-        .resultFormat(ScanQuery.RESULT_FORMAT_COMPACTED_LIST)
-        .build();
-
     HashMap<String, Object> context = new HashMap<>();
     Iterable<ScanResultValue> results = runner.run(QueryPlus.wrap(query), context).toList();
 
@@ -226,7 +185,7 @@ public class ScanQueryRunnerTest
         0,
         3
     );
-    verify(expectedResults, populateNullColumnAtLastForQueryableIndexCase(compactedListToRow(results), "null_column"));
+    verify(expectedResults, populateNullColumnAtLastForQueryableIndexCase(results, "null_column"));
   }
 
   @Test
@@ -507,6 +466,83 @@ public class ScanQueryRunnerTest
 
     verify(expectedResults, results);
   }
+
+  @Test
+  public void testFullOnSelectWithFilterLimitAndTimeOrdering()
+  {
+    // limits
+    for (int limit : new int[]{3, 1, 5, 7, 0}) {
+      ScanQuery query = newTestQuery()
+          .intervals(I_0112_0114)
+          .filters(new SelectorDimFilter(QueryRunnerTestHelper.marketDimension, "spot", null))
+          .columns(QueryRunnerTestHelper.qualityDimension, QueryRunnerTestHelper.indexMetric)
+          .limit(limit)
+          .build();
+
+      HashMap<String, Object> context = new HashMap<>();
+      Iterable<ScanResultValue> results = runner.run(QueryPlus.wrap(query), context).toList();
+      String[] seg1Results = new String[] {
+          "2011-01-12T00:00:00.000Z\tspot\tautomotive\tpreferred\tapreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\tbusiness\tpreferred\tbpreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\tentertainment\tpreferred\tepreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\thealth\tpreferred\thpreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\tmezzanine\tpreferred\tmpreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\tnews\tpreferred\tnpreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\tpremium\tpreferred\tppreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\ttechnology\tpreferred\ttpreferred\t100.000000",
+          "2011-01-12T00:00:00.000Z\tspot\ttravel\tpreferred\ttpreferred\t100.000000"
+      };
+      String[] seg2Results = new String[] {
+          "2011-01-13T00:00:00.000Z\tspot\tautomotive\tpreferred\tapreferred\t94.874713",
+          "2011-01-13T00:00:00.000Z\tspot\tbusiness\tpreferred\tbpreferred\t103.629399",
+          "2011-01-13T00:00:00.000Z\tspot\tentertainment\tpreferred\tepreferred\t110.087299",
+          "2011-01-13T00:00:00.000Z\tspot\thealth\tpreferred\thpreferred\t114.947403",
+          "2011-01-13T00:00:00.000Z\tspot\tmezzanine\tpreferred\tmpreferred\t104.465767",
+          "2011-01-13T00:00:00.000Z\tspot\tnews\tpreferred\tnpreferred\t102.851683",
+          "2011-01-13T00:00:00.000Z\tspot\tpremium\tpreferred\tppreferred\t108.863011",
+          "2011-01-13T00:00:00.000Z\tspot\ttechnology\tpreferred\ttpreferred\t111.356672",
+          "2011-01-13T00:00:00.000Z\tspot\ttravel\tpreferred\ttpreferred\t106.236928"
+      };
+      final List<List<Map<String, Object>>> ascendingEvents = toEvents(
+          new String[]{
+              legacy ? getTimestampName() + ":TIME" : null,
+              null,
+              QueryRunnerTestHelper.qualityDimension + ":STRING",
+              null,
+              null,
+              QueryRunnerTestHelper.indexMetric + ":DOUBLE"
+          },
+          (String[]) ArrayUtils.addAll(seg1Results, seg2Results)
+      );
+      List<ScanResultValue> ascendingExpectedResults = toExpected(
+          ascendingEvents,
+          legacy ? Lists.newArrayList(getTimestampName(), "quality", "index") : Lists.newArrayList("quality", "index"),
+          0,
+          limit
+      );
+      verify(ascendingExpectedResults, results);
+
+      final List<List<Map<String, Object>>> descendingEvents = toEvents(
+          new String[]{
+              legacy ? getTimestampName() + ":TIME" : null,
+              null,
+              QueryRunnerTestHelper.qualityDimension + ":STRING",
+              null,
+              null,
+              QueryRunnerTestHelper.indexMetric + ":DOUBLE"
+          },
+          (String[]) ArrayUtils.addAll(seg2Results, seg1Results) //segments in reverse order from above
+      );
+      List<ScanResultValue> descendingExpectedResults = toExpected(
+          ascendingEvents,
+          legacy ? Lists.newArrayList(getTimestampName(), "quality", "index") : Lists.newArrayList("quality", "index"),
+          0,
+          limit
+      );
+      verify(descendingExpectedResults, results);
+    }
+  }
+
 
   private List<List<Map<String, Object>>> toFullEvents(final String[]... valueSet)
   {
