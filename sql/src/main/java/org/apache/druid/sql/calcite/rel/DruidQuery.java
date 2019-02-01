@@ -963,7 +963,7 @@ public class DruidQuery
       return null;
     }
     String timeOrder;
-    if (scanLimit < ScanQueryQueryToolChest.MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING) {
+    if (scanLimit < 1) {
       timeOrder = ScanQuery.TIME_ORDER_NONE;
     } else if (orderBy.getDirection() == OrderByColumnSpec.Direction.DESCENDING) {
       timeOrder = ScanQuery.TIME_ORDER_DESCENDING;
