@@ -43,8 +43,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
+import static org.apache.hadoop.metrics2.sink.timeline.AbstractTimelineMetricsSink.WS_V1_TIMELINE_METRICS;
 
-public class AmbariMetricsEmitter extends AbstractTimelineMetricsSink implements Emitter
+
+public class AmbariMetricsEmitter implements Emitter
 {
   private static final Logger log = new Logger(AmbariMetricsEmitter.class);
 
@@ -85,9 +87,6 @@ public class AmbariMetricsEmitter extends AbstractTimelineMetricsSink implements
     synchronized (started) {
       log.info("Starting Ambari Metrics Emitter.");
       if (!started.get()) {
-        if ("https".equals(config.getProtocol())) {
-          loadTruststore(config.getTrustStorePath(), config.getTrustStoreType(), config.getTrustStorePassword());
-        }
         exec.scheduleAtFixedRate(
             new ConsumerRunnable(),
             config.getFlushPeriod(),
@@ -139,23 +138,14 @@ public class AmbariMetricsEmitter extends AbstractTimelineMetricsSink implements
     }
   }
 
-  @Override
-  protected String getCollectorUri()
-  {
-    return collectorURI;
-  }
-
-  @Override
-  protected int getTimeoutSeconds()
-  {
-    return (int) (DEFAULT_FLUSH_TIMEOUT_MILLIS / 1000);
-  }
-
-  private class ConsumerRunnable implements Runnable
+  private class ConsumerRunnable extends AbstractTimelineMetricsSink  implements Runnable
   {
     @Override
     public void run()
     {
+      if ("https".equals(config.getProtocol())) {
+        loadTruststore(config.getTrustStorePath(), config.getTrustStoreType(), config.getTrustStorePassword());
+      }
       try {
         int batchSize = config.getBatchSize();
         TimelineMetrics metrics = new TimelineMetrics();
@@ -197,6 +187,18 @@ public class AmbariMetricsEmitter extends AbstractTimelineMetricsSink implements
         }
       }
 
+    }
+
+    @Override
+    protected String getCollectorUri()
+    {
+      return collectorURI;
+    }
+
+    @Override
+    protected int getTimeoutSeconds()
+    {
+      return (int) (DEFAULT_FLUSH_TIMEOUT_MILLIS / 1000);
     }
   }
 
