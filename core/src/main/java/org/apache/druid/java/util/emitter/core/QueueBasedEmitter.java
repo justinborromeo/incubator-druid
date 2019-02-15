@@ -1,7 +1,6 @@
 package org.apache.druid.java.util.emitter.core;
 
 import org.apache.druid.java.util.common.logger.Logger;
-
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class QueueBasedEmitter<T> implements Emitter
@@ -38,7 +37,7 @@ public abstract class QueueBasedEmitter<T> implements Emitter
     catch (InterruptedException e) {
       logFailureWithFrequency(numDroppedTotal);
       log.error(e, "got interrupted with message [%s]", e.getMessage());
-      Thread.currentThread().interrupt(); // Look at this in the context of KafkaEmitter
+      Thread.currentThread().interrupt();
     }
     return false;
   }
