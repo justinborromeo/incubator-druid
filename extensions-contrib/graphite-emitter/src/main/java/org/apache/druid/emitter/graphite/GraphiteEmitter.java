@@ -93,7 +93,6 @@ public class GraphiteEmitter implements Emitter
     }
   }
 
-
   @Override
   public void emit(Event event)
   {
