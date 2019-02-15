@@ -112,17 +112,11 @@ public class AmbariMetricsEmitter extends QueueBasedEmitter<TimelineMetric>
       if (timelineEvent == null) {
         return;
       }
-      try {
-        offerAndHandleFailure(
-            timelineEvent,
-            new EmitterCountBoundedQueueHolder<>(eventsQueue),
-            10,
+      offerAndHandleFailure(
+          timelineEvent,
+          new EmitterCountBoundedQueueHolder<>(eventsQueue),
+          10,
             countLostEvents);
-      }
-      catch (InterruptedException e) {
-        log.error(e, "got interrupted with message [%s]", e.getMessage());
-        Thread.currentThread().interrupt();
-      }
     } else if (event instanceof AlertEvent) {
       for (Emitter emitter : emitterList) {
         emitter.emit(event);

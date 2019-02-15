@@ -26,7 +26,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.logger.Logger;
 import org.apache.druid.java.util.emitter.core.Emitter;
+import org.apache.druid.java.util.emitter.core.EmitterCountBoundedQueueHolder;
 import org.apache.druid.java.util.emitter.core.Event;
+import org.apache.druid.java.util.emitter.core.QueueBasedEmitter;
 import org.apache.druid.java.util.emitter.service.AlertEvent;
 import org.apache.druid.java.util.emitter.service.ServiceMetricEvent;
 import org.apache.druid.server.log.RequestLogEvent;
@@ -46,9 +48,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 
-public class GraphiteEmitter implements Emitter
+public class GraphiteEmitter extends QueueBasedEmitter<GraphiteEvent>
 {
-  private static Logger log = new Logger(GraphiteEmitter.class);
+  private static final Logger log = new Logger(GraphiteEmitter.class);
 
   private final DruidToGraphiteEventConverter graphiteEventConverter;
   private final GraphiteEmitterConfig graphiteEmitterConfig;
@@ -69,6 +71,7 @@ public class GraphiteEmitter implements Emitter
       List<Emitter> requestLogEmitters
   )
   {
+    super(log);
     this.alertEmitters = alertEmitters;
     this.requestLogEmitters = requestLogEmitters;
     this.graphiteEmitterConfig = graphiteEmitterConfig;
@@ -104,25 +107,11 @@ public class GraphiteEmitter implements Emitter
       if (graphiteEvent == null) {
         return;
       }
-      try {
-        final boolean isSuccessful = eventsQueue.offer(
-            graphiteEvent,
-            graphiteEmitterConfig.getEmitWaitTime(),
-            TimeUnit.MILLISECONDS
-        );
-        if (!isSuccessful) {
-          if (countLostEvents.getAndIncrement() % 1000 == 0) {
-            log.error(
-                "Lost total of [%s] events because of emitter queue is full. Please increase the capacity or/and the consumer frequency",
-                countLostEvents.get()
-            );
-          }
-        }
-      }
-      catch (InterruptedException e) {
-        log.error(e, "got interrupted with message [%s]", e.getMessage());
-        Thread.currentThread().interrupt();
-      }
+      offerAndHandleFailure(
+          graphiteEvent,
+          new EmitterCountBoundedQueueHolder<>(eventsQueue),
+          10,
+          countLostEvents);
     } else if (event instanceof RequestLogEvent) {
       for (Emitter emitter : requestLogEmitters) {
         emitter.emit(event);

@@ -9,35 +9,45 @@ public abstract class QueueBasedEmitter<T> implements Emitter
   private static final double LOG_FREQUENCY = 0.001;
   private static Logger log;
 
-  public QueueBasedEmitter(Logger log) {
+  public QueueBasedEmitter(Logger log)
+  {
     this.log = log;
   }
 
-  protected int offerAndHandleFailure(
+  protected boolean offerAndHandleFailure(
       T event,
       EmitterQueueHolder<T> queue,
       int maxRetries,
-      AtomicLong numDroppedTotal)
-      throws InterruptedException
+      AtomicLong numDroppedTotal
+  )
   {
-    boolean successful = false;
-    int numDropped = 0;
-    for (int i = 0; i < maxRetries && !successful; i++) {
-      if (!(successful = queue.offer(event))) {
-        if (queue.poll() != null) {
+    try {
+      boolean successful = queue.offer(event);
+      for (int i = 0; i < maxRetries && !successful; i++) {
+        // poll only runs if successful == false
+        if (!successful && queue.poll() != null) {
           logFailureWithFrequency(numDroppedTotal);
-          numDropped++;
+          successful = queue.offer(event);
         }
       }
+      if (!successful) {
+        logFailureWithFrequency(numDroppedTotal);
+        return successful;
+      }
     }
-    return numDropped;
+    catch (InterruptedException e) {
+      logFailureWithFrequency(numDroppedTotal);
+      log.error(e, "got interrupted with message [%s]", e.getMessage());
+      Thread.currentThread().interrupt(); // Look at this in the context of KafkaEmitter
+    }
+    return false;
   }
 
   protected void logFailureWithFrequency(AtomicLong numEventsDropped)
   {
     if (numEventsDropped.getAndIncrement() % (1 / LOG_FREQUENCY) == 0) {
       log.error(
-          "Lost total of [%s] events because of emitter queue is full. Please increase the capacity or/and the consumer frequency",
+          "Lost total of [%s] events because emitter queue is full. Please increase the capacity and/or the consumer frequency",
           numEventsDropped.get()
       );
     }

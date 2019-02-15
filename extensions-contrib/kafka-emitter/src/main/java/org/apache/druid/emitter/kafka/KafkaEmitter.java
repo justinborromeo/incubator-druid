@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class KafkaEmitter extends QueueBasedEmitter<ObjectContainer>
 {
-  private static Logger log = new Logger(KafkaEmitter.class);
+  private static final Logger log = new Logger(KafkaEmitter.class);
 
   private static final int DEFAULT_RETRIES = 3;
   private final AtomicLong metricLost;
@@ -177,10 +177,13 @@ public class KafkaEmitter extends QueueBasedEmitter<ObjectContainer>
               new EmitterMemoryBoundedQueueHolder(metricQueue),
               5,
               metricLost);
+
         } else if (event instanceof AlertEvent) {
-          if (!alertQueue.offer(objectContainer)) {
-            alertLost.incrementAndGet();
-          }
+          offerAndHandleFailure(
+              objectContainer,
+              new EmitterMemoryBoundedQueueHolder(alertQueue),
+              5,
+              alertLost);
         } else {
           invalidLost.incrementAndGet();
         }
