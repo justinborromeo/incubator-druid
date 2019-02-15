@@ -28,7 +28,9 @@ import org.apache.druid.java.util.common.lifecycle.LifecycleStart;
 import org.apache.druid.java.util.common.lifecycle.LifecycleStop;
 import org.apache.druid.java.util.common.logger.Logger;
 import org.apache.druid.java.util.emitter.core.Emitter;
+import org.apache.druid.java.util.emitter.core.EmitterQueueHolder;
 import org.apache.druid.java.util.emitter.core.Event;
+import org.apache.druid.java.util.emitter.core.QueueBasedEmitter;
 import org.apache.druid.java.util.emitter.service.AlertEvent;
 import org.apache.druid.java.util.emitter.service.ServiceMetricEvent;
 import org.apache.kafka.clients.producer.Callback;
@@ -45,7 +47,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class KafkaEmitter implements Emitter
+public class KafkaEmitter extends QueueBasedEmitter<ObjectContainer>
 {
   private static Logger log = new Logger(KafkaEmitter.class);
 
@@ -64,6 +66,7 @@ public class KafkaEmitter implements Emitter
 
   public KafkaEmitter(KafkaEmitterConfig config, ObjectMapper jsonMapper)
   {
+    super(log);
     this.config = config;
     this.jsonMapper = jsonMapper;
     this.producer = setKafkaProducer();
@@ -169,9 +172,11 @@ public class KafkaEmitter implements Emitter
             StringUtils.toUtf8(resultJson).length
         );
         if (event instanceof ServiceMetricEvent) {
-          if (!metricQueue.offer(objectContainer)) {
-            metricLost.incrementAndGet();
-          }
+          offerAndHandleFailure(
+              objectContainer,
+              new EmitterMemoryBoundedQueueHolder(metricQueue),
+              5,
+              metricLost);
         } else if (event instanceof AlertEvent) {
           if (!alertQueue.offer(objectContainer)) {
             alertLost.incrementAndGet();

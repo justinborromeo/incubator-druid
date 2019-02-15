@@ -24,7 +24,9 @@ import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.logger.Logger;
 import org.apache.druid.java.util.emitter.core.Emitter;
+import org.apache.druid.java.util.emitter.core.EmitterCountBoundedQueueHolder;
 import org.apache.druid.java.util.emitter.core.Event;
+import org.apache.druid.java.util.emitter.core.QueueBasedEmitter;
 import org.apache.druid.java.util.emitter.service.AlertEvent;
 import org.apache.druid.java.util.emitter.service.ServiceMetricEvent;
 import org.apache.hadoop.metrics2.sink.timeline.AbstractTimelineMetricsSink;
@@ -45,8 +47,7 @@ import java.util.regex.Pattern;
 
 import static org.apache.hadoop.metrics2.sink.timeline.AbstractTimelineMetricsSink.WS_V1_TIMELINE_METRICS;
 
-
-public class AmbariMetricsEmitter implements Emitter
+public class AmbariMetricsEmitter extends QueueBasedEmitter<TimelineMetric>
 {
   private static final Logger log = new Logger(AmbariMetricsEmitter.class);
 
@@ -68,6 +69,7 @@ public class AmbariMetricsEmitter implements Emitter
       List<Emitter> emitterList
   )
   {
+    super(log);
     this.config = config;
     this.emitterList = emitterList;
     this.timelineMetricConverter = config.getDruidToTimelineEventConverter();
@@ -111,19 +113,11 @@ public class AmbariMetricsEmitter implements Emitter
         return;
       }
       try {
-        final boolean isSuccessful = eventsQueue.offer(
+        offerAndHandleFailure(
             timelineEvent,
-            config.getEmitWaitTime(),
-            TimeUnit.MILLISECONDS
-        );
-        if (!isSuccessful) {
-          if (countLostEvents.getAndIncrement() % 1000 == 0) {
-            log.error(
-                "Lost total of [%s] events because of emitter queue is full. Please increase the capacity or/and the consumer frequency",
-                countLostEvents.get()
-            );
-          }
-        }
+            new EmitterCountBoundedQueueHolder<>(eventsQueue),
+            10,
+            countLostEvents);
       }
       catch (InterruptedException e) {
         log.error(e, "got interrupted with message [%s]", e.getMessage());
@@ -138,7 +132,7 @@ public class AmbariMetricsEmitter implements Emitter
     }
   }
 
-  private class ConsumerRunnable extends AbstractTimelineMetricsSink  implements Runnable
+  private class ConsumerRunnable extends AbstractTimelineMetricsSink implements Runnable
   {
     @Override
     public void run()

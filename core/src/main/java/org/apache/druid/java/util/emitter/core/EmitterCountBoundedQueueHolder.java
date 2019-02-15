@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit;
 public class EmitterCountBoundedQueueHolder<T> implements EmitterQueueHolder<T>
 {
   private final BlockingQueue<T> eventsQueue;
-
   private final long DEFAULT_OFFER_TIMEOUT_MILLIS = 10;
   private final long DEFAULT_POLL_TIMEOUT_MILLIS = 10;
 

@@ -20,6 +20,7 @@
 package org.apache.druid.emitter.kafka;
 
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -46,7 +47,7 @@ public class MemoryBoundLinkedBlockingQueue<T>
 
     if (currentMemory.addAndGet(itemLength) <= memoryBound) {
       if (queue.offer(item)) {
-        return true;
+          return true;
       }
     }
     currentMemory.addAndGet(-itemLength);
@@ -58,6 +59,16 @@ public class MemoryBoundLinkedBlockingQueue<T>
   {
     final ObjectContainer<T> ret = queue.take();
     currentMemory.addAndGet(-ret.getSize());
+    return ret;
+  }
+
+  // blocks but times out if no elements are present
+  public ObjectContainer<T> poll(long timeout, TimeUnit units) throws InterruptedException
+  {
+    final ObjectContainer<T> ret = queue.poll(timeout, units);
+    if (ret != null) {
+      currentMemory.addAndGet(-ret.getSize());
+    }
     return ret;
   }
 
