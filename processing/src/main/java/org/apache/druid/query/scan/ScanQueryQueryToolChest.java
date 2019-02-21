@@ -96,6 +96,7 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
                 }
               });
         }
+        /* Use PQueue b/c low limit, low/high # of segments open */
       } else if (scanQuery.getLimit() <= scanQueryConfig.getMaxRowsTimeOrderQueuedInMemory()) {
         ScanQueryNoLimitRowIterator scanResultIterator =
             new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryNoLimitRowIterator>()
@@ -127,6 +128,22 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
 
               @Override
               public void cleanup(ScanBatchedIterator iterFromMake)
+              {
+                CloseQuietly.close(iterFromMake);
+              }
+            });
+      } else if (/* # segments > config.getThreshold */) {
+        return new BaseSequence(
+            new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryNoLimitRowIterator>()
+            {
+              @Override
+              public ScanQueryNoLimitRowIterator make()
+              {
+                return new ScanQueryNoLimitRowIterator(runner, queryPlusWithNonNullLegacy, responseContext);
+              }
+
+              @Override
+              public void cleanup(ScanQueryNoLimitRowIterator iterFromMake)
               {
                 CloseQuietly.close(iterFromMake);
               }
