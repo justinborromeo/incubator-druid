@@ -194,11 +194,11 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
 
     while (inputIterator.hasNext()) {
       ScanResultValue next = inputIterator.next();
-      List<Object> events = (List<Object>) next.getEvents();
-      for (Object event : events) {
+      List<ScanResultValue> singleEventScanResultValues = next.toSingleEventScanResultValues();
+      for (ScanResultValue srv : singleEventScanResultValues) {
         // Using an intermediate unbatched ScanResultValue is not that great memory-wise, but the column list
         // needs to be preserved for queries using the compactedList result format
-        q.offer(new ScanResultValue(null, next.getColumns(), Collections.singletonList(event)));
+        q.offer(srv);
         if (q.size() > limit) {
           q.poll();
         }
