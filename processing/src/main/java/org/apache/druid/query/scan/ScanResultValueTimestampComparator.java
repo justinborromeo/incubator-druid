@@ -32,11 +32,13 @@ import java.util.Comparator;
  */
 public class ScanResultValueTimestampComparator implements Comparator<ScanResultValue>
 {
-  private final ScanQuery scanQuery;
+  private final ScanQuery.ResultFormat resultFormat;
+  private final ScanQuery.TimeOrder timeOrder;
 
-  public ScanResultValueTimestampComparator(ScanQuery scanQuery)
+  public ScanResultValueTimestampComparator(ScanQuery.ResultFormat resultFormat, ScanQuery.TimeOrder timeOrder)
   {
-    this.scanQuery = scanQuery;
+    this.resultFormat = resultFormat;
+    this.timeOrder = timeOrder;
   }
 
   @Override
@@ -44,9 +46,9 @@ public class ScanResultValueTimestampComparator implements Comparator<ScanResult
   {
     int comparison;
     comparison = Longs.compare(
-        o1.getFirstEventTimestamp(scanQuery),
-        o2.getFirstEventTimestamp(scanQuery));
-    if (scanQuery.getTimeOrder().equals(ScanQuery.TimeOrder.DESCENDING)) {
+        o1.getFirstEventTimestamp(resultFormat),
+        o2.getFirstEventTimestamp(resultFormat));
+    if (timeOrder.equals(ScanQuery.TimeOrder.DESCENDING)) {
       return comparison;
     }
     return comparison * -1;

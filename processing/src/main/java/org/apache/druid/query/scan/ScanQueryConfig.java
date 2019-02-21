@@ -40,12 +40,29 @@ public class ScanQueryConfig
     return this;
   }
 
-  @JsonProperty
-  private int maxRowsTimeOrderedInMemory = 100000;
+  /**
+   * If limit < maxRowsTimeOrderedInMemory:
+   *   Use Priority Queue
+   * Else if # segments < maxSegmentsTimeOrderedInMemory
+   *   Use in-memory N-way merge
+   * Else
+   *   Use N-way merge on disk
+   */
 
-  public int getMaxRowsTimeOrderedInMemory()
+  @JsonProperty
+  private int maxRowsTimeOrderQueuedInMemory = 100000;
+
+  public int getMaxRowsTimeOrderQueuedInMemory()
   {
-    return maxRowsTimeOrderedInMemory;
+    return maxRowsTimeOrderQueuedInMemory;
+  }
+
+  @JsonProperty
+  private int maxSegmentsTimeOrderedInMemory = 50;
+
+  public int getMaxSegmentsTimeOrderedInMemory()
+  {
+    return maxSegmentsTimeOrderedInMemory;
   }
 
   @Override

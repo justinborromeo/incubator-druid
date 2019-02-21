@@ -25,6 +25,8 @@ import org.apache.druid.java.util.common.UOE;
 import org.apache.druid.segment.column.ColumnHolder;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -73,16 +75,26 @@ public class ScanResultValue implements Comparable<ScanResultValue>
     return events;
   }
 
-  public long getFirstEventTimestamp(ScanQuery query)
+  public long getFirstEventTimestamp(ScanQuery.ResultFormat resultFormat)
   {
-    if (query.getResultFormat().equals(ScanQuery.ResultFormat.RESULT_FORMAT_LIST)) {
+    if (resultFormat.equals(ScanQuery.ResultFormat.RESULT_FORMAT_LIST)) {
       return (Long) ((Map<String, Object>) ((List<Object>) this.getEvents()).get(0)).get(ColumnHolder.TIME_COLUMN_NAME);
-    } else if (query.getResultFormat().equals(ScanQuery.ResultFormat.RESULT_FORMAT_COMPACTED_LIST)) {
+    } else if (resultFormat.equals(ScanQuery.ResultFormat.RESULT_FORMAT_COMPACTED_LIST)) {
       int timeColumnIndex = this.getColumns().indexOf(ColumnHolder.TIME_COLUMN_NAME);
       List<Object> firstEvent = (List<Object>) ((List<Object>) this.getEvents()).get(0);
       return (Long) firstEvent.get(timeColumnIndex);
     }
-    throw new UOE("Unable to get first event timestamp using result format of [%s]", query.getResultFormat());
+    throw new UOE("Unable to get first event timestamp using result format of [%s]", resultFormat.toString());
+  }
+
+  public List<ScanResultValue> toSingleEventScanResultValues()
+  {
+    List<ScanResultValue> singleEventScanResultValues = new ArrayList<>();
+    List<Object> events = (List<Object>) this.getEvents();
+    for (Object event : events) {
+      singleEventScanResultValues.add(new ScanResultValue(segmentId, columns, Collections.singletonList(event)));
+    }
+    return singleEventScanResultValues;
   }
 
   @Override

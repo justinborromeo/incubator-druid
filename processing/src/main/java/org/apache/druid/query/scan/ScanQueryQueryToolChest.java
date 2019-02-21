@@ -96,7 +96,7 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
                 }
               });
         }
-      } else if (scanQuery.getLimit() <= scanQueryConfig.getMaxRowsTimeOrderedInMemory()) {
+      } else if (scanQuery.getLimit() <= scanQueryConfig.getMaxRowsTimeOrderQueuedInMemory()) {
         ScanQueryNoLimitRowIterator scanResultIterator =
             new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryNoLimitRowIterator>()
             {
@@ -136,7 +136,7 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
             "Time ordering for result set limit of %,d is not supported.  Try lowering the "
             + "result set size to less than or equal to the time ordering limit of %,d.",
             scanQuery.getLimit(),
-            scanQueryConfig.getMaxRowsTimeOrderedInMemory()
+            scanQueryConfig.getMaxRowsTimeOrderQueuedInMemory()
         );
       }
     };
@@ -184,7 +184,8 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
   @VisibleForTesting
   Iterator<ScanResultValue> sortAndLimitScanResultValues(Iterator<ScanResultValue> inputIterator, ScanQuery scanQuery)
   {
-    Comparator<ScanResultValue> priorityQComparator = new ScanResultValueTimestampComparator(scanQuery);
+    Comparator<ScanResultValue> priorityQComparator =
+        new ScanResultValueTimestampComparator(scanQuery.getResultFormat(), scanQuery.getTimeOrder());
 
     // Converting the limit from long to int could theoretically throw an ArithmeticException but this branch
     // only runs if limit < MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING (which should be < Integer.MAX_VALUE)

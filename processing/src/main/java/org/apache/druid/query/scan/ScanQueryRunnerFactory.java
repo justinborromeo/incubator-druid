@@ -19,7 +19,7 @@
 
 package org.apache.druid.query.scan;
 
-import com.google.common.base.Function;
+import com.google.common.collect.Ordering;
 import com.google.inject.Inject;
 import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.JodaUtils;
@@ -33,6 +33,7 @@ import org.apache.druid.query.QueryRunnerFactory;
 import org.apache.druid.query.QueryToolChest;
 import org.apache.druid.segment.Segment;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
@@ -44,15 +45,18 @@ public class ScanQueryRunnerFactory implements QueryRunnerFactory<ScanResultValu
   public static final String CTX_COUNT = "count";
   private final ScanQueryQueryToolChest toolChest;
   private final ScanQueryEngine engine;
+  private final ScanQueryConfig config;
 
   @Inject
   public ScanQueryRunnerFactory(
       ScanQueryQueryToolChest toolChest,
-      ScanQueryEngine engine
+      ScanQueryEngine engine,
+      ScanQueryConfig config
   )
   {
     this.toolChest = toolChest;
     this.engine = engine;
+    this.config = config;
   }
 
   @Override
@@ -68,29 +72,50 @@ public class ScanQueryRunnerFactory implements QueryRunnerFactory<ScanResultValu
   )
   {
     // in single thread and in jetty thread instead of processing thread
-    return new QueryRunner<ScanResultValue>()
-    {
-      @Override
-      public Sequence<ScanResultValue> run(
-          final QueryPlus<ScanResultValue> queryPlus, final Map<String, Object> responseContext
-      )
-      {
-        // Note: this variable is effective only when queryContext has a timeout.
-        // See the comment of CTX_TIMEOUT_AT.
-        final long timeoutAt = System.currentTimeMillis() + QueryContexts.getTimeout(queryPlus.getQuery());
-        responseContext.put(CTX_TIMEOUT_AT, timeoutAt);
+    return (queryPlus, responseContext) -> {
+      final ScanQuery query = (ScanQuery) queryPlus.getQuery();
+
+      /**
+       * Get number of segments being queried
+       */
+      int numSegments = 0;
+      final Iterator<QueryRunner<ScanResultValue>> segmentIt = queryRunners.iterator();
+      while (segmentIt.hasNext()) {
+        segmentIt.next();
+        numSegments++;
+      }
+      // Note: this variable is effective only when queryContext has a timeout.
+      // See the comment of CTX_TIMEOUT_AT.
+      final long timeoutAt = System.currentTimeMillis() + QueryContexts.getTimeout(queryPlus.getQuery());
+      responseContext.put(CTX_TIMEOUT_AT, timeoutAt);
+
+      if (query.getLimit() <= config.getMaxRowsTimeOrderQueuedInMemory() &&
+          query.getTimeOrder().equals(ScanQuery.TimeOrder.NONE)) {
         return Sequences.concat(
             Sequences.map(
                 Sequences.simple(queryRunners),
-                new Function<QueryRunner<ScanResultValue>, Sequence<ScanResultValue>>()
-                {
-                  @Override
-                  public Sequence<ScanResultValue> apply(final QueryRunner<ScanResultValue> input)
-                  {
-                    return input.run(queryPlus, responseContext);
-                  }
-                }
+                input -> input.run(queryPlus, responseContext)
             )
+        );
+      } else {
+        return Sequences.map(
+            Sequences.simple(queryRunners),
+            (input) -> {
+              Sequence<ScanResultValue> aggregated = input.run(queryPlus, responseContext);
+              return Sequences.concat(
+                  Sequences.map(
+                      aggregated,
+                      srv -> Sequences.simple(srv.toSingleEventScanResultValues())
+                  )
+              );
+            }
+        )
+        .flatMerge(
+            seq -> seq,
+            Ordering.from(new ScanResultValueTimestampComparator(
+                query.getResultFormat(),
+                query.getTimeOrder()
+            ))
         );
       }
     };
