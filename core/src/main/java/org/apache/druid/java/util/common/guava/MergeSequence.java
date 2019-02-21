@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.PriorityQueue;
 
 /**
+ * A sequence that handles performing an n-way merge of n ordered sequences.
  */
 public class MergeSequence<T> extends YieldingSequenceBase<T>
 {

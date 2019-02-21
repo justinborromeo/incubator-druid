@@ -20,12 +20,10 @@
 package org.apache.druid.query.scan;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
-import org.apache.druid.java.util.common.UOE;
 import org.apache.druid.java.util.common.guava.BaseSequence;
 import org.apache.druid.java.util.common.guava.CloseQuietly;
 import org.apache.druid.java.util.common.guava.Sequence;
@@ -39,15 +37,10 @@ import org.apache.druid.query.QueryToolChest;
 import org.apache.druid.query.aggregation.MetricManipulationFn;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 
 public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, ScanQuery>
 {
@@ -76,10 +69,7 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
       // the same way, even if they have different default legacy values.
       final ScanQuery scanQuery = ((ScanQuery) queryPlus.getQuery()).withNonNullLegacy(scanQueryConfig);
       final QueryPlus<ScanResultValue> queryPlusWithNonNullLegacy = queryPlus.withQuery(scanQuery);
-      if (scanQuery.getTimeOrder().equals(ScanQuery.TimeOrder.NONE)) {
-        if (scanQuery.getLimit() == Long.MAX_VALUE) {
-          return runner.run(queryPlusWithNonNullLegacy, responseContext);
-        } else {
+      if (scanQuery.getTimeOrder().equals(ScanQuery.TimeOrder.NONE) && scanQuery.getLimit() != Long.MAX_VALUE) {
           return new BaseSequence<>(
               new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryLimitRowIterator>()
               {
@@ -95,66 +85,8 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
                   CloseQuietly.close(iterFromMake);
                 }
               });
-        }
-        /* Use PQueue b/c low limit, low/high # of segments open */
-      } else if (scanQuery.getLimit() <= scanQueryConfig.getMaxRowsTimeOrderQueuedInMemory()) {
-        ScanQueryNoLimitRowIterator scanResultIterator =
-            new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryNoLimitRowIterator>()
-            {
-              @Override
-              public ScanQueryNoLimitRowIterator make()
-              {
-                return new ScanQueryNoLimitRowIterator(runner, queryPlusWithNonNullLegacy, responseContext);
-              }
-
-              @Override
-              public void cleanup(ScanQueryNoLimitRowIterator iterFromMake)
-              {
-                CloseQuietly.close(iterFromMake);
-              }
-            }.make();
-
-        return new BaseSequence(
-            new BaseSequence.IteratorMaker<ScanResultValue, ScanBatchedIterator>()
-            {
-              @Override
-              public ScanBatchedIterator make()
-              {
-                return new ScanBatchedIterator(
-                    sortAndLimitScanResultValues(scanResultIterator, scanQuery),
-                    scanQuery.getBatchSize()
-                );
-              }
-
-              @Override
-              public void cleanup(ScanBatchedIterator iterFromMake)
-              {
-                CloseQuietly.close(iterFromMake);
-              }
-            });
-      } else if (/* # segments > config.getThreshold */) {
-        return new BaseSequence(
-            new BaseSequence.IteratorMaker<ScanResultValue, ScanQueryNoLimitRowIterator>()
-            {
-              @Override
-              public ScanQueryNoLimitRowIterator make()
-              {
-                return new ScanQueryNoLimitRowIterator(runner, queryPlusWithNonNullLegacy, responseContext);
-              }
-
-              @Override
-              public void cleanup(ScanQueryNoLimitRowIterator iterFromMake)
-              {
-                CloseQuietly.close(iterFromMake);
-              }
-            });
       } else {
-        throw new UOE(
-            "Time ordering for result set limit of %,d is not supported.  Try lowering the "
-            + "result set size to less than or equal to the time ordering limit of %,d.",
-            scanQuery.getLimit(),
-            scanQueryConfig.getMaxRowsTimeOrderQueuedInMemory()
-        );
+        return runner.run(queryPlusWithNonNullLegacy, responseContext);
       }
     };
   }
@@ -196,40 +128,6 @@ public class ScanQueryQueryToolChest extends QueryToolChest<ScanResultValue, Sca
         return runner.run(queryPlus, responseContext);
       }
     };
-  }
-
-  @VisibleForTesting
-  Iterator<ScanResultValue> sortAndLimitScanResultValues(Iterator<ScanResultValue> inputIterator, ScanQuery scanQuery)
-  {
-    Comparator<ScanResultValue> priorityQComparator =
-        new ScanResultValueTimestampComparator(scanQuery.getResultFormat(), scanQuery.getTimeOrder());
-
-    // Converting the limit from long to int could theoretically throw an ArithmeticException but this branch
-    // only runs if limit < MAX_LIMIT_FOR_IN_MEMORY_TIME_ORDERING (which should be < Integer.MAX_VALUE)
-    int limit = Math.toIntExact(scanQuery.getLimit());
-    PriorityQueue<ScanResultValue> q = new PriorityQueue<>(limit, priorityQComparator);
-
-    while (inputIterator.hasNext()) {
-      ScanResultValue next = inputIterator.next();
-      List<ScanResultValue> singleEventScanResultValues = next.toSingleEventScanResultValues();
-      for (ScanResultValue srv : singleEventScanResultValues) {
-        // Using an intermediate unbatched ScanResultValue is not that great memory-wise, but the column list
-        // needs to be preserved for queries using the compactedList result format
-        q.offer(srv);
-        if (q.size() > limit) {
-          q.poll();
-        }
-      }
-    }
-    // Need to convert to a List because Priority Queue's iterator doesn't guarantee that the sorted order
-    // will be maintained
-    final Deque<ScanResultValue> sortedElements = new ArrayDeque<>(q.size());
-    while (q.size() != 0) {
-      // We add at the front of the list because poll removes the tail of the queue.
-      sortedElements.addFirst(q.poll());
-    }
-
-    return sortedElements.iterator();
   }
 
   /**

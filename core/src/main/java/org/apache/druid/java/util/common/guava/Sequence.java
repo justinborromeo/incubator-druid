@@ -56,15 +56,16 @@ public interface Sequence<T>
  /**
    * Return an Yielder for accumulated sequence.
    *
-   * @param initValue   the initial value to pass along to start the accumulation.
-   * @param accumulator the accumulator which is responsible for accumulating input values.
    * @param <OutType>   the type of accumulated value.
    *
+   * @param initValue   the initial value to pass along to start the accumulation.
+   * @param accumulator the accumulator which is responsible for accumulating input values.
    * @return an Yielder for accumulated sequence.
    *
    * @see Yielder
    */
   <OutType> Yielder<OutType> toYielder(OutType initValue, YieldingAccumulator<OutType, T> accumulator);
+
 
   default <U> Sequence<U> map(Function<? super T, ? extends U> mapper)
   {
