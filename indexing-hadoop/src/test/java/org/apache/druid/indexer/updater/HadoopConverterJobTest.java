@@ -183,6 +183,7 @@ public class HadoopConverterJobTest
                     ImmutableList.of(interval)
                 ),
                 null,
+                null,
                 HadoopDruidIndexerConfig.JSON_MAPPER
             ),
             new HadoopIOConfig(

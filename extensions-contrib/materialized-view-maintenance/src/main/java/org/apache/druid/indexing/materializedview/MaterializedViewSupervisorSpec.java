@@ -204,6 +204,7 @@ public class MaterializedViewSupervisorSpec implements SupervisorSpec
         aggregators,
         granularitySpec,
         TransformSpec.NONE,
+        null,
         objectMapper
     );
     

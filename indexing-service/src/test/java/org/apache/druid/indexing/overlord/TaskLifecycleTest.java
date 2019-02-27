@@ -678,6 +678,7 @@ public class TaskLifecycleTest
                     ImmutableList.of(Intervals.of("2010-01-01/P2D"))
                 ),
                 null,
+                null,
                 mapper
             ),
             new IndexIOConfig(new MockFirehoseFactory(false), false),
@@ -759,6 +760,7 @@ public class TaskLifecycleTest
                     null,
                     ImmutableList.of(Intervals.of("2010-01-01/P1D"))
                 ),
+                null,
                 null,
                 mapper
             ),
@@ -1149,6 +1151,7 @@ public class TaskLifecycleTest
                     ImmutableList.of(Intervals.of("2010-01-01/P2D"))
                 ),
                 null,
+                null,
                 mapper
             ),
             new IndexIOConfig(new MockFirehoseFactory(false), false),
@@ -1274,6 +1277,7 @@ public class TaskLifecycleTest
         null,
         new AggregatorFactory[]{new LongSumAggregatorFactory("count", "rows")},
         new UniformGranularitySpec(Granularities.DAY, Granularities.NONE, null),
+        null,
         null,
         mapper
     );

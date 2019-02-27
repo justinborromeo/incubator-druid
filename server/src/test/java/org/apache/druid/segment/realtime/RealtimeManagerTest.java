@@ -159,6 +159,7 @@ public class RealtimeManagerTest
         new AggregatorFactory[]{new CountAggregatorFactory("rows")},
         new UniformGranularitySpec(Granularities.HOUR, Granularities.NONE, null),
         null,
+        null,
         jsonMapper
     );
     schema2 = new DataSchema(
@@ -166,6 +167,7 @@ public class RealtimeManagerTest
         null,
         new AggregatorFactory[]{new CountAggregatorFactory("rows")},
         new UniformGranularitySpec(Granularities.HOUR, Granularities.NONE, null),
+        null,
         null,
         jsonMapper
     );
@@ -305,6 +307,7 @@ public class RealtimeManagerTest
         null,
         new AggregatorFactory[]{new CountAggregatorFactory("ignore")},
         new UniformGranularitySpec(Granularities.HOUR, Granularities.NONE, null),
+        null,
         null,
         jsonMapper
     );

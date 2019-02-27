@@ -181,6 +181,7 @@ public class DetermineHashedPartitionsJobTest
                 intervals
             ),
             null,
+            null,
             HadoopDruidIndexerConfig.JSON_MAPPER
         ),
         new HadoopIOConfig(

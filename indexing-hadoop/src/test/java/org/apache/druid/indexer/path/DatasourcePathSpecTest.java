@@ -347,6 +347,7 @@ public class DatasourcePathSpecTest
                     ImmutableList.of(Intervals.of("2000/3000"))
                 ),
                 null,
+                null,
                 HadoopDruidIndexerConfig.JSON_MAPPER
             ),
             new HadoopIOConfig(

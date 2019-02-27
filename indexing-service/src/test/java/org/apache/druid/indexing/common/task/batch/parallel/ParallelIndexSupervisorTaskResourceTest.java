@@ -414,6 +414,7 @@ public class ParallelIndexSupervisorTaskResourceTest extends AbstractParallelInd
                 interval == null ? null : Collections.singletonList(interval)
             ),
             null,
+            null,
             getObjectMapper()
         ),
         ioConfig,

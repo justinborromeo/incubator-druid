@@ -119,6 +119,7 @@ public class ParallelIndexSupervisorTaskSerdeTest
                 interval == null ? null : Collections.singletonList(interval)
             ),
             null,
+            null,
             objectMapper
         ),
         new ParallelIndexIOConfig(

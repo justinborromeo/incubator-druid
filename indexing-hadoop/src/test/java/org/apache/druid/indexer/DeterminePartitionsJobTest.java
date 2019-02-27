@@ -242,6 +242,7 @@ public class DeterminePartitionsJobTest
                     ImmutableList.of(Intervals.of(interval))
                 ),
                 null,
+                null,
                 HadoopDruidIndexerConfig.JSON_MAPPER
             ),
             new HadoopIOConfig(

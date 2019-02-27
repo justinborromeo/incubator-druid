@@ -157,6 +157,7 @@ public class GranularityPathSpecTest
                 ImmutableList.of(Intervals.of("2015-11-06T00:00Z/2015-11-07T00:00Z"))
             ),
             null,
+            null,
             jsonMapper
         ),
         new HadoopIOConfig(null, null, null),
@@ -208,6 +209,7 @@ public class GranularityPathSpecTest
                 Granularities.ALL,
                 ImmutableList.of(Intervals.of("2015-01-01T11Z/2015-01-02T05Z"))
             ),
+            null,
             null,
             jsonMapper
         ),

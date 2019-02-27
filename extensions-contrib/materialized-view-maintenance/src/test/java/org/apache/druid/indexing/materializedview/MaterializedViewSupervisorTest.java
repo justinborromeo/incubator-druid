@@ -216,6 +216,7 @@ public class MaterializedViewSupervisorTest
         null,
         null,
         TransformSpec.NONE,
+        null,
         objectMapper
     );
     HadoopIOConfig hadoopIOConfig = new HadoopIOConfig(new HashMap<>(), null, null);

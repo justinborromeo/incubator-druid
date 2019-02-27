@@ -1664,6 +1664,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       Optional<DateTime> maximumMessageTime
   )
   {
+    log.info("YAH YEET");
     StringBuilder sb = new StringBuilder();
 
     for (Entry<PartitionIdType, SequenceOffsetType> entry : startPartitions.entrySet()) {

@@ -271,6 +271,7 @@ public class KafkaIndexTaskTest
       },
       new UniformGranularitySpec(Granularities.DAY, Granularities.NONE, null),
       null,
+      null,
       objectMapper
   );
 
@@ -2386,6 +2387,7 @@ public class KafkaIndexTaskTest
         dataSchema.getAggregators(),
         dataSchema.getGranularitySpec(),
         dataSchema.getTransformSpec(),
+        null,
         objectMapper
     );
   }

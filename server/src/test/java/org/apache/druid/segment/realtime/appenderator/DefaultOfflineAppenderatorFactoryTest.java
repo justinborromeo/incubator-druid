@@ -129,6 +129,7 @@ public class DefaultOfflineAppenderatorFactoryTest
         },
         new UniformGranularitySpec(Granularities.MINUTE, Granularities.NONE, null),
         null,
+        null,
         objectMapper
     );
 

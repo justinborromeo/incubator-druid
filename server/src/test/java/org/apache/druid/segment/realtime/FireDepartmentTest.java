@@ -100,6 +100,7 @@ public class FireDepartmentTest
             },
             new UniformGranularitySpec(Granularities.HOUR, Granularities.MINUTE, null),
             null,
+            null,
             jsonMapper
         ),
         new RealtimeIOConfig(

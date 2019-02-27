@@ -86,6 +86,7 @@ public class IndexGeneratorCombinerTest
                     ImmutableList.of(Intervals.of("2010/2011"))
                 ),
                 null,
+                null,
                 HadoopDruidIndexerConfig.JSON_MAPPER
             ),
             new HadoopIOConfig(

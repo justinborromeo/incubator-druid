@@ -138,6 +138,7 @@ public class AppenderatorTester implements AutoCloseable
         },
         new UniformGranularitySpec(Granularities.MINUTE, Granularities.NONE, null),
         null,
+        null,
         objectMapper
     );
     maxSizeInBytes = maxSizeInBytes == 0L ? getDefaultMaxBytesInMemory() : maxSizeInBytes;

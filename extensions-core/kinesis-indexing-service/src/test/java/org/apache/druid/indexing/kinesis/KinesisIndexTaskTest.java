@@ -278,6 +278,7 @@ public class KinesisIndexTaskTest extends EasyMockSupport
       },
       new UniformGranularitySpec(Granularities.DAY, Granularities.NONE, null),
       null,
+      null,
       objectMapper
   );
 
@@ -2595,6 +2596,7 @@ public class KinesisIndexTaskTest extends EasyMockSupport
         dataSchema.getAggregators(),
         dataSchema.getGranularitySpec(),
         dataSchema.getTransformSpec(),
+        null,
         objectMapper
     );
   }

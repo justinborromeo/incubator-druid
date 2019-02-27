@@ -84,6 +84,7 @@ public class DataSchemaTest
             },
         new ArbitraryGranularitySpec(Granularities.DAY, ImmutableList.of(Intervals.of("2014/2015"))),
         null,
+        null,
         jsonMapper
     );
 
@@ -120,6 +121,7 @@ public class DataSchemaTest
             new DoubleSumAggregatorFactory("metric2", "col2"),
             },
         new ArbitraryGranularitySpec(Granularities.DAY, ImmutableList.of(Intervals.of("2014/2015"))),
+        null,
         null,
         jsonMapper
     );
@@ -163,6 +165,7 @@ public class DataSchemaTest
                 new ExpressionTransform("expr", "concat(dimA,dimA)", TestExprMacroTable.INSTANCE)
             )
         ),
+        null,
         jsonMapper
     );
 
@@ -216,6 +219,7 @@ public class DataSchemaTest
             },
         new ArbitraryGranularitySpec(Granularities.DAY, ImmutableList.of(Intervals.of("2014/2015"))),
         null,
+        null,
         jsonMapper
     );
     schema.getParser();
@@ -249,6 +253,7 @@ public class DataSchemaTest
             new DoubleSumAggregatorFactory("metric1", "col3"),
             },
         new ArbitraryGranularitySpec(Granularities.DAY, ImmutableList.of(Intervals.of("2014/2015"))),
+        null,
         null,
         jsonMapper
     );
@@ -318,6 +323,7 @@ public class DataSchemaTest
             new DoubleSumAggregatorFactory("metric2", "col2"),
             },
         new ArbitraryGranularitySpec(Granularities.DAY, ImmutableList.of(Intervals.of("2014/2015"))),
+        null,
         null,
         jsonMapper
     );

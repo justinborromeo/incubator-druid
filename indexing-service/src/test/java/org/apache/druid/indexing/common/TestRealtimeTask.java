@@ -55,7 +55,7 @@ public class TestRealtimeTask extends RealtimeIndexTask
         id,
         taskResource,
         new FireDepartment(
-            new DataSchema(dataSource, null, new AggregatorFactory[]{}, null, null, mapper),
+            new DataSchema(dataSource, null, new AggregatorFactory[]{}, null, null, null, mapper),
             new RealtimeIOConfig(
                 new LocalFirehoseFactory(new File("lol"), "rofl", null),
                 (schema, config, metrics) -> null,

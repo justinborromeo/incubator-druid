@@ -1685,6 +1685,7 @@ public class IndexTaskTest
                 Collections.singletonList(Intervals.of("2014/2015"))
             ),
             transformSpec,
+            null,
             jsonMapper
         ),
         new IndexTask.IndexIOConfig(

@@ -53,6 +53,7 @@ public class DataSchema
   private final AggregatorFactory[] aggregators;
   private final GranularitySpec granularitySpec;
   private final TransformSpec transformSpec;
+  private final String asdf;
 
   private final ObjectMapper jsonMapper;
 
@@ -65,12 +66,14 @@ public class DataSchema
       @JsonProperty("metricsSpec") AggregatorFactory[] aggregators,
       @JsonProperty("granularitySpec") GranularitySpec granularitySpec,
       @JsonProperty("transformSpec") TransformSpec transformSpec,
+      @JsonProperty("asdf") String asdf,
       @JacksonInject ObjectMapper jsonMapper
   )
   {
     this.jsonMapper = Preconditions.checkNotNull(jsonMapper, "null ObjectMapper.");
     this.parser = parser;
     this.transformSpec = transformSpec == null ? TransformSpec.NONE : transformSpec;
+    this.asdf = asdf;
 
     Preconditions.checkArgument(!Strings.isNullOrEmpty(dataSource), "dataSource cannot be null or empty. Please provide a dataSource.");
     Preconditions.checkArgument(!dataSource.contains("/"), "dataSource cannot contain the '/' character.");
@@ -108,6 +111,12 @@ public class DataSchema
   public Map<String, Object> getParserMap()
   {
     return parser;
+  }
+
+  @JsonProperty("asdf")
+  public String getAsdf()
+  {
+    return asdf;
   }
 
   @JsonIgnore
@@ -197,12 +206,12 @@ public class DataSchema
 
   public DataSchema withGranularitySpec(GranularitySpec granularitySpec)
   {
-    return new DataSchema(dataSource, parser, aggregators, granularitySpec, transformSpec, jsonMapper);
+    return new DataSchema(dataSource, parser, aggregators, granularitySpec, transformSpec, null, jsonMapper);
   }
 
   public DataSchema withTransformSpec(TransformSpec transformSpec)
   {
-    return new DataSchema(dataSource, parser, aggregators, granularitySpec, transformSpec, jsonMapper);
+    return new DataSchema(dataSource, parser, aggregators, granularitySpec, transformSpec, null, jsonMapper);
   }
 
   @Override

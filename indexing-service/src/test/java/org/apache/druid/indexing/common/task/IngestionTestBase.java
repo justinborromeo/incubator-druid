@@ -176,6 +176,7 @@ public abstract class IngestionTestBase
                 Collections.singletonList(Intervals.of("2014/2015"))
             ),
             transformSpec,
+            null,
             objectMapper
         ),
         new IndexTask.IndexIOConfig(

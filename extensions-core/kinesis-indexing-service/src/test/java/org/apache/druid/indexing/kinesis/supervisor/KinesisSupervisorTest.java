@@ -3556,6 +3556,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
             ImmutableList.of()
         ),
         null,
+        null,
         objectMapper
     );
   }

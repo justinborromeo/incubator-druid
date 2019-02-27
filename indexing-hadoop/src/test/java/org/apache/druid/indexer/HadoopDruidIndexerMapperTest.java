@@ -79,6 +79,7 @@ public class HadoopDruidIndexerMapperTest
       new AggregatorFactory[]{new CountAggregatorFactory("rows")},
       new UniformGranularitySpec(Granularities.DAY, Granularities.NONE, null),
       null,
+      null,
       JSON_MAPPER
   );
 

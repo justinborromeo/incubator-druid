@@ -578,6 +578,7 @@ public class CompactionTask extends AbstractTask
         finalMetricsSpec,
         granularitySpec,
         null,
+        null,
         jsonMapper
     );
   }
