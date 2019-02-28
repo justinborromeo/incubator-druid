@@ -1654,10 +1654,10 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         task.getTuningConfig()
     );
     if (activelyReadingTaskGroups.get(taskGroupId) != null) {
-      return Preconditions
+      String bsq = Preconditions
           .checkNotNull(activelyReadingTaskGroups.get(taskGroupId), "null taskGroup for taskId[%s]", taskGroupId)
-          .baseSequenceName
-          .equals(taskSequenceName);
+          .baseSequenceName;
+      return bsq.equals(taskSequenceName);
     } else {
       return generateSequenceName(
           task.getIOConfig()
