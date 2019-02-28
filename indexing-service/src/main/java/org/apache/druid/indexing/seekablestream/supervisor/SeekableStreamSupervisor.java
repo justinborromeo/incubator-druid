@@ -74,6 +74,7 @@ import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.concurrent.Execs;
 import org.apache.druid.java.util.emitter.EmittingLogger;
 import org.apache.druid.metadata.EntryExistsException;
+import org.apache.druid.segment.indexing.DataSchema;
 import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
@@ -176,7 +177,13 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       this.exclusiveStartSequenceNumberPartitions = exclusiveStartSequenceNumberPartitions != null
                                                     ? exclusiveStartSequenceNumberPartitions
                                                     : new HashSet<>();
-      this.baseSequenceName = generateSequenceName(startingSequences, minimumMessageTime, maximumMessageTime);
+      this.baseSequenceName = generateSequenceName(
+          startingSequences,
+          minimumMessageTime,
+          maximumMessageTime,
+          spec.getDataSchema(),
+          taskTuningConfig
+      );
     }
 
     int addNewCheckpoint(Map<PartitionIdType, SequenceOffsetType> checkpoint)
@@ -1640,6 +1647,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType> task = (SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType>) taskOptional
         .get();
 
+    // taskSequenceName should be recalculated
     String taskSequenceName = task.getIOConfig().getBaseSequenceName();
     if (activelyReadingTaskGroups.get(taskGroupId) != null) {
       return Preconditions
@@ -1652,8 +1660,18 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
               .getStartPartitions()
               .getPartitionSequenceNumberMap(),
           task.getIOConfig().getMinimumMessageTime(),
-          task.getIOConfig().getMaximumMessageTime()
-      ).equals(taskSequenceName);
+          task.getIOConfig().getMaximumMessageTime(),
+          spec.getDataSchema(),
+          taskTuningConfig
+      ).equals(
+          generateSequenceName(
+              task.getIOConfig().getStartPartitions().getPartitionSequenceNumberMap(),
+              task.getIOConfig().getMinimumMessageTime(),
+              task.getIOConfig().getMaximumMessageTime(),
+              task.getDataSchema(),
+              task.getTuningConfig()
+          )
+      );
     }
   }
 
@@ -1661,10 +1679,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   protected String generateSequenceName(
       Map<PartitionIdType, SequenceOffsetType> startPartitions,
       Optional<DateTime> minimumMessageTime,
-      Optional<DateTime> maximumMessageTime
+      Optional<DateTime> maximumMessageTime,
+      DataSchema dataSchema,
+      SeekableStreamIndexTaskTuningConfig tuningConfig
   )
   {
-    log.info("YAH YEET");
     StringBuilder sb = new StringBuilder();
 
     for (Entry<PartitionIdType, SequenceOffsetType> entry : startPartitions.entrySet()) {
@@ -1675,17 +1694,17 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     String minMsgTimeStr = (minimumMessageTime.isPresent() ? String.valueOf(minimumMessageTime.get().getMillis()) : "");
     String maxMsgTimeStr = (maximumMessageTime.isPresent() ? String.valueOf(maximumMessageTime.get().getMillis()) : "");
 
-    String dataSchema, tuningConfig;
+    String dataSchemaStr, tuningConfigStr;
     try {
-      dataSchema = sortingMapper.writeValueAsString(spec.getDataSchema());
-      tuningConfig = sortingMapper.writeValueAsString(taskTuningConfig);
+      dataSchemaStr = sortingMapper.writeValueAsString(dataSchema);
+      tuningConfigStr = sortingMapper.writeValueAsString(tuningConfig);
     }
     catch (JsonProcessingException e) {
       throw Throwables.propagate(e);
     }
 
-    String hashCode = DigestUtils.sha1Hex(dataSchema
-                                          + tuningConfig
+    String hashCode = DigestUtils.sha1Hex(dataSchemaStr
+                                          + tuningConfigStr
                                           + partitionOffsetStr
                                           + minMsgTimeStr
                                           + maxMsgTimeStr)
