@@ -1646,9 +1646,13 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     @SuppressWarnings("unchecked")
     SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType> task = (SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType>) taskOptional
         .get();
-
-    // taskSequenceName should be recalculated
-    String taskSequenceName = task.getIOConfig().getBaseSequenceName();
+    String taskSequenceName = generateSequenceName(
+        task.getIOConfig().getStartPartitions().getPartitionSequenceNumberMap(),
+        task.getIOConfig().getMinimumMessageTime(),
+        task.getIOConfig().getMaximumMessageTime(),
+        task.getDataSchema(),
+        task.getTuningConfig()
+    );
     if (activelyReadingTaskGroups.get(taskGroupId) != null) {
       return Preconditions
           .checkNotNull(activelyReadingTaskGroups.get(taskGroupId), "null taskGroup for taskId[%s]", taskGroupId)
@@ -1663,15 +1667,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           task.getIOConfig().getMaximumMessageTime(),
           spec.getDataSchema(),
           taskTuningConfig
-      ).equals(
-          generateSequenceName(
-              task.getIOConfig().getStartPartitions().getPartitionSequenceNumberMap(),
-              task.getIOConfig().getMinimumMessageTime(),
-              task.getIOConfig().getMaximumMessageTime(),
-              task.getDataSchema(),
-              task.getTuningConfig()
-          )
-      );
+      ).equals(taskSequenceName);
     }
   }
 
