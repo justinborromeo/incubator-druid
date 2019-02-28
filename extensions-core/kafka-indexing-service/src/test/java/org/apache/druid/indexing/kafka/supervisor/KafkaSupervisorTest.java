@@ -2876,6 +2876,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
             ImmutableList.of()
         ),
         null,
+        null,
         objectMapper
     );
   }
@@ -2970,7 +2971,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
           rowIngestionMetersFactory
       );
     }
-
+    /*
     @Override
     protected String generateSequenceName(
         Map<Integer, Long> startPartitions,
@@ -2981,6 +2982,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
       final int groupId = getTaskGroupIdForPartition(startPartitions.keySet().iterator().next());
       return StringUtils.format("sequenceName-%d", groupId);
     }
+    */
   }
 
 
