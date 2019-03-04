@@ -3762,7 +3762,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
       );
       this.spec = spec;
     }
-
+    /*
     @Override
     protected String generateSequenceName(
         Map<String, String> startPartitions,
@@ -3773,6 +3773,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
       final int groupId = getTaskGroupIdForPartition(startPartitions.keySet().iterator().next());
       return StringUtils.format("sequenceName-%d", groupId);
     }
+    */
 
     @Override
     protected RecordSupplier<String, String> setupRecordSupplier()
