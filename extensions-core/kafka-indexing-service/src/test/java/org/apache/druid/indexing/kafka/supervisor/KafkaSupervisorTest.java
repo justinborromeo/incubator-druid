@@ -38,11 +38,9 @@ import org.apache.druid.data.input.impl.StringDimensionSchema;
 import org.apache.druid.data.input.impl.StringInputRowParser;
 import org.apache.druid.data.input.impl.TimestampSpec;
 import org.apache.druid.indexer.TaskLocation;
-import org.apache.druid.indexer.TaskState;
 import org.apache.druid.indexer.TaskStatus;
 import org.apache.druid.indexing.common.TaskInfoProvider;
 import org.apache.druid.indexing.common.TestUtils;
-import org.apache.druid.indexing.common.config.TaskStorageConfig;
 import org.apache.druid.indexing.common.stats.RowIngestionMetersFactory;
 import org.apache.druid.indexing.common.task.RealtimeIndexTask;
 import org.apache.druid.indexing.common.task.Task;
@@ -52,9 +50,7 @@ import org.apache.druid.indexing.kafka.KafkaIndexTaskClient;
 import org.apache.druid.indexing.kafka.KafkaIndexTaskClientFactory;
 import org.apache.druid.indexing.kafka.KafkaIndexTaskIOConfig;
 import org.apache.druid.indexing.kafka.test.TestBroker;
-import org.apache.druid.indexing.kafka.test.TestExtendedDataSchema;
 import org.apache.druid.indexing.overlord.DataSourceMetadata;
-import org.apache.druid.indexing.overlord.HeapMemoryTaskStorage;
 import org.apache.druid.indexing.overlord.IndexerMetadataStorageCoordinator;
 import org.apache.druid.indexing.overlord.TaskMaster;
 import org.apache.druid.indexing.overlord.TaskQueue;
@@ -72,7 +68,6 @@ import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.granularity.Granularities;
 import org.apache.druid.java.util.common.parsers.JSONPathSpec;
 import org.apache.druid.java.util.emitter.EmittingLogger;
-import org.apache.druid.metadata.EntryExistsException;
 import org.apache.druid.query.aggregation.AggregatorFactory;
 import org.apache.druid.query.aggregation.CountAggregatorFactory;
 import org.apache.druid.segment.TestHelper;
@@ -2729,31 +2724,12 @@ public class KafkaSupervisorTest extends EasyMockSupport
   }
 
   @Test
-  public void testIsTaskCurrentCompatible() throws EntryExistsException
+  public void testIsTaskCurrent()
   {
-    DataSchema base = getDataSchema("a datasource");
-    TestExtendedDataSchema extensionSchema = new TestExtendedDataSchema(base, null);
+    DataSchema dataSchema = getDataSchema("a datasource");
 
     DateTime minMessageTime = DateTime.now();
     DateTime maxMessageTime = DateTime.now().plus(10000);
-
-    KafkaIndexTask oldTask = createKafkaIndexTask(
-        "id1",
-        1,
-        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 0L)),
-        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 10L)),
-        minMessageTime,
-        maxMessageTime,
-        base
-    );
-
-    TaskStorage storage = new HeapMemoryTaskStorage(
-        new TaskStorageConfig(
-            new Period()
-        )
-    );
-
-    storage.insert(oldTask, TaskStatus.running(oldTask.getId()));
 
     supervisor = getSupervisor(
         1,
@@ -2764,52 +2740,9 @@ public class KafkaSupervisorTest extends EasyMockSupport
         null,
         false,
         kafkaHost,
-        extensionSchema,
-        storage
+        dataSchema
     );
 
-    KafkaIndexTask newTask = createKafkaIndexTask(
-        "id1",
-        1,
-        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 0L)),
-        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 10L)),
-        minMessageTime,
-        maxMessageTime,
-        extensionSchema
-    );
-
-    replayAll();
-
-    supervisor.addTaskGroupToActivelyReadingTaskGroup(
-        42,
-        ImmutableMap.of(0, 0L),
-        newTask.getIOConfig().getMinimumMessageTime(),
-        newTask.getIOConfig().getMaximumMessageTime(),
-        ImmutableSet.of(newTask.getId()),
-        newTask.getIOConfig().getExclusiveStartSequenceNumberPartitions()
-    );
-
-    Assert.assertTrue(supervisor.isTaskCurrent(42, "id1"));
-  }
-
-  /*@Test
-  public void testIsTaskCurrentIncompatible()
-  {
-    DataSchema base = getDataSchema("a datasource");
-    TestExtendedDataSchema extensionSchema = new TestExtendedDataSchema(base, "asdfasdf");
-    supervisor = getSupervisor(
-        1,
-        2,
-        true,
-        "PT1H",
-        null,
-        null,
-        false,
-        kafkaHost,
-        extensionSchema
-    );
-    DateTime minMessageTime = DateTime.now();
-    DateTime maxMessageTime = DateTime.now().plus(10000);
     KafkaIndexTask oldTask = createKafkaIndexTask(
         "id1",
         1,
@@ -2817,7 +2750,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
         new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 10L)),
         minMessageTime,
         maxMessageTime,
-        base
+        dataSchema
     );
 
     KafkaIndexTask newTask = createKafkaIndexTask(
@@ -2827,7 +2760,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
         new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 10L)),
         minMessageTime,
         maxMessageTime,
-        extensionSchema
+        dataSchema
     );
 
     expect(taskStorage.getTask("id1"))
@@ -2845,8 +2778,8 @@ public class KafkaSupervisorTest extends EasyMockSupport
         newTask.getIOConfig().getExclusiveStartSequenceNumberPartitions()
     );
 
-    Assert.assertFalse(supervisor.isTaskCurrent(42, "id1"));
-  }*/
+    Assert.assertTrue(supervisor.isTaskCurrent(42, "id1"));
+  }
 
   private void addSomeEvents(int numEventsPerPartition) throws Exception
   {
@@ -2978,8 +2911,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
       Period earlyMessageRejectionPeriod,
       boolean suspended,
       String kafkaHost,
-      DataSchema schema,
-      TaskStorage taskStorage
+      DataSchema schema
   )
   {
     Map<String, Object> consumerProperties = new HashMap<>();

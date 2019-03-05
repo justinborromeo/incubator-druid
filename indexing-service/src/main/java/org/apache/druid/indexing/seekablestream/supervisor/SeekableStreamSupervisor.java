@@ -1647,12 +1647,39 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     @SuppressWarnings("unchecked")
     SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType> task = (SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType>) taskOptional
         .get();
+
+    String taskSequenceName = task.getIOConfig().getBaseSequenceName();
+    if (activelyReadingTaskGroups.get(taskGroupId) != null) {
+      return Preconditions
+          .checkNotNull(activelyReadingTaskGroups.get(taskGroupId), "null taskGroup for taskId[%s]", taskGroupId)
+          .baseSequenceName
+          .equals(taskSequenceName);
+    } else {
+      return generateSequenceName(
+          task.getIOConfig()
+              .getStartPartitions()
+              .getPartitionSequenceNumberMap(),
+          task.getIOConfig().getMinimumMessageTime(),
+          task.getIOConfig().getMaximumMessageTime(),
+          spec.getDataSchema(),
+          taskTuningConfig
+      ).equals(taskSequenceName);
+    }
+    /*
+    Optional<Task> taskOptional = taskStorage.getTask(taskId);
+    if (!taskOptional.isPresent() || !doesTaskTypeMatchSupervisor(taskOptional.get())) {
+      return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType> task = (SeekableStreamIndexTask<PartitionIdType, SequenceOffsetType>) taskOptional
+        .get();
     String taskSequenceName = generateSequenceName(
         task.getIOConfig().getStartPartitions().getPartitionSequenceNumberMap(),
         task.getIOConfig().getMinimumMessageTime(),
         task.getIOConfig().getMaximumMessageTime(),
         task.getDataSchema(),
-        ((SeekableStreamSupervisorTuningConfig) task.getTuningConfig()).convertToTaskTuningConfig()
+        task.getTuningConfig()
     );
     if (activelyReadingTaskGroups.get(taskGroupId) != null) {
       TaskGroup taskGroup = Preconditions
@@ -1675,6 +1702,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           taskTuningConfig
       ).equals(taskSequenceName);
     }
+    */
   }
 
   private String generateSequenceName(
