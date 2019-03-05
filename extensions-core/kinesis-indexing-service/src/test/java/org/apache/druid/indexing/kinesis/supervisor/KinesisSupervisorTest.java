@@ -56,6 +56,7 @@ import org.apache.druid.indexing.overlord.TaskRunnerListener;
 import org.apache.druid.indexing.overlord.TaskRunnerWorkItem;
 import org.apache.druid.indexing.overlord.TaskStorage;
 import org.apache.druid.indexing.overlord.supervisor.SupervisorReport;
+import org.apache.druid.indexing.seekablestream.SeekableStreamIndexTaskTuningConfig;
 import org.apache.druid.indexing.seekablestream.SeekableStreamPartitions;
 import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
 import org.apache.druid.indexing.seekablestream.common.StreamPartition;
@@ -110,8 +111,6 @@ import static org.easymock.EasyMock.expectLastCall;
 
 public class KinesisSupervisorTest extends EasyMockSupport
 {
-
-
   private static final ObjectMapper objectMapper = TestHelper.makeJsonMapper();
   private static final String DATASOURCE = "testDS";
   private static final int TEST_CHAT_THREADS = 3;
@@ -3762,25 +3761,24 @@ public class KinesisSupervisorTest extends EasyMockSupport
       );
       this.spec = spec;
     }
-    /*
+
     @Override
     protected String generateSequenceName(
         Map<String, String> startPartitions,
         Optional<DateTime> minimumMessageTime,
-        Optional<DateTime> maximumMessageTime
+        Optional<DateTime> maximumMessageTime,
+        DataSchema dataSchema,
+        SeekableStreamIndexTaskTuningConfig tuningConfig
     )
     {
       final int groupId = getTaskGroupIdForPartition(startPartitions.keySet().iterator().next());
       return StringUtils.format("sequenceName-%d", groupId);
     }
-    */
 
     @Override
     protected RecordSupplier<String, String> setupRecordSupplier()
     {
       return supervisorRecordSupplier;
     }
-
-
   }
 }

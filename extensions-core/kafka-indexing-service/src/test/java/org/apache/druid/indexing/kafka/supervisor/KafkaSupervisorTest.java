@@ -3239,7 +3239,6 @@ public class KafkaSupervisorTest extends EasyMockSupport
     {
       return dataSource;
     }
-
   }
 
   private static class TestableKafkaSupervisor extends KafkaSupervisor
@@ -3277,8 +3276,5 @@ public class KafkaSupervisorTest extends EasyMockSupport
       final int groupId = getTaskGroupIdForPartition(startPartitions.keySet().iterator().next());
       return StringUtils.format("sequenceName-%d", groupId);
     }
-
   }
-
-
 }
