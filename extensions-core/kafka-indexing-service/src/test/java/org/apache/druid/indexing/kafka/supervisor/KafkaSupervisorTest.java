@@ -139,7 +139,6 @@ public class KafkaSupervisorTest extends EasyMockSupport
   private static int topicPostfix;
   private static ZkUtils zkUtils;
 
-
   private final int numThreads;
 
   private KafkaSupervisor supervisor;
