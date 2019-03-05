@@ -2725,12 +2725,12 @@ public class KafkaSupervisorTest extends EasyMockSupport
   }
 
   @Test
-  public void testIsTaskCurrent()
+  public void testIsTaskCurrentActivelyRunningTask()
   {
     DataSchema dataSchema = getDataSchema("a datasource");
 
-    DateTime minMessageTime = DateTime.now();
-    DateTime maxMessageTime = DateTime.now().plus(10000);
+    DateTime minMessageTime = DateTimes.nowUtc();
+    DateTime maxMessageTime = DateTimes.nowUtc().plus(10000);
 
     supervisor = getTestableSupervisor(
         1,
@@ -2782,6 +2782,54 @@ public class KafkaSupervisorTest extends EasyMockSupport
     Assert.assertTrue(supervisor.isTaskCurrent(42, "id1"));
   }
 
+  @Test
+  public void testIsTaskCurrentNotActivelyRunningTask()
+  {
+    DataSchema dataSchema = getDataSchema("a datasource");
+
+    DateTime minMessageTime = DateTimes.nowUtc();
+    DateTime maxMessageTime = DateTimes.nowUtc().plus(10000);
+
+    supervisor = getTestableSupervisor(
+        1,
+        2,
+        true,
+        "PT1H",
+        null,
+        null,
+        false,
+        kafkaHost,
+        dataSchema
+    );
+
+    KafkaIndexTask oldTask = createKafkaIndexTask(
+        "id1",
+        1,
+        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 0L)),
+        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 10L)),
+        minMessageTime,
+        maxMessageTime,
+        dataSchema
+    );
+
+    KafkaIndexTask newTask = createKafkaIndexTask(
+        "id1",
+        1,
+        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 0L)),
+        new SeekableStreamPartitions<>("topic", ImmutableMap.of(0, 10L)),
+        minMessageTime,
+        maxMessageTime,
+        dataSchema
+    );
+
+    expect(taskStorage.getTask("id1"))
+        .andReturn(Optional.of(oldTask))
+        .once();
+
+    replayAll();
+
+    Assert.assertTrue(supervisor.isTaskCurrent(42, "id1"));
+  }
 
   private void addSomeEvents(int numEventsPerPartition) throws Exception
   {
