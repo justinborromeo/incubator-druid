@@ -2712,7 +2712,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
    * calculates the taskgroup id that the given partition belongs to.
    * different between Kafka/Kinesis since Kinesis uses String as partition id
    *
-   * @param partition paritition id
+   * @param partition partition id
    *
    * @return taskgroup id
    */
