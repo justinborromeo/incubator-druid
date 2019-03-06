@@ -1655,8 +1655,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         task.getTuningConfig()
     );
     if (activelyReadingTaskGroups.get(taskGroupId) != null) {
-      TaskGroup taskGroup = Preconditions
-          .checkNotNull(activelyReadingTaskGroups.get(taskGroupId), "null taskGroup for taskId[%s]", taskGroupId);
+      TaskGroup taskGroup = activelyReadingTaskGroups.get(taskGroupId);
       return generateSequenceName(
           taskGroup.startingSequences,
           taskGroup.minimumMessageTime,
