@@ -103,15 +103,9 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
 
 import static org.apache.druid.indexing.seekablestream.SeekableStreamIndexTaskRunner.Status;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.anyString;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
 
 public class KinesisSupervisorTest extends EasyMockSupport
 {
-
-
   private static final ObjectMapper objectMapper = TestHelper.makeJsonMapper();
   private static final String DATASOURCE = "testDS";
   private static final int TEST_CHAT_THREADS = 3;
@@ -209,28 +203,28 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<KinesisIndexTask> captured = Capture.newInstance();
-    expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
-    expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
-    expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of()).anyTimes();
-    expect(indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(
+    EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
+    EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
+    EasyMock.expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of()).anyTimes();
+    EasyMock.expect(indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(
         new KinesisDataSourceMetadata(
             null
         )
     ).anyTimes();
-    expect(taskQueue.add(EasyMock.capture(captured))).andReturn(true);
-    taskRunner.registerListener(anyObject(TaskRunnerListener.class), anyObject(Executor.class));
+    EasyMock.expect(taskQueue.add(EasyMock.capture(captured))).andReturn(true);
+    taskRunner.registerListener(EasyMock.anyObject(TaskRunnerListener.class), EasyMock.anyObject(Executor.class));
     replayAll();
 
     supervisor.start();
@@ -274,16 +268,16 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(1, 2, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<KinesisIndexTask> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -331,16 +325,16 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<KinesisIndexTask> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -405,16 +399,16 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(2, 1, true, "PT1H", new Period("PT1H"), null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<KinesisIndexTask> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -454,16 +448,16 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(2, 1, true, "PT1H", null, new Period("PT1H"));
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<KinesisIndexTask> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -508,18 +502,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(shard1Partition)).andReturn("2").anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(shard1Partition)).andReturn("2").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<KinesisIndexTask> captured = Capture.newInstance();
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -561,17 +555,17 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
 
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.absent()).anyTimes();
@@ -597,17 +591,17 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     // unexpected # of partitions (kill)
     Task id1 = createKinesisIndexTask(
@@ -754,17 +748,17 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(1, 2, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Task id1 = createKinesisIndexTask(
         "id1",
@@ -903,17 +897,17 @@ public class KinesisSupervisorTest extends EasyMockSupport
   public void testRequeueTaskWhenFailed() throws Exception
   {
     supervisor = getSupervisor(2, 2, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
 
     Capture<Task> captured = Capture.newInstance(CaptureType.ALL);
@@ -1012,17 +1006,17 @@ public class KinesisSupervisorTest extends EasyMockSupport
   public void testRequeueAdoptedTaskWhenFailed() throws Exception
   {
     supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     DateTime now = DateTimes.nowUtc();
     DateTime maxi = now.plusMinutes(60);
@@ -1144,17 +1138,17 @@ public class KinesisSupervisorTest extends EasyMockSupport
   public void testQueueNextTasksOnSuccess() throws Exception
   {
     supervisor = getSupervisor(2, 2, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(anyObject())).andReturn("100").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(EasyMock.anyObject())).andReturn("100").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<Task> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -1266,18 +1260,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
 
     supervisor = getSupervisor(2, 2, true, "PT1M", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<Task> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -1399,18 +1393,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
 
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Task task = createKinesisIndexTask(
         "id1",
@@ -1549,18 +1543,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
     final TaskLocation location = new TaskLocation("testHost", 1234, -1);
 
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Task task = createKinesisIndexTask(
         "id1",
@@ -1691,18 +1685,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
 
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
     Task id1 = createKinesisIndexTask(
         "id1",
         DATASOURCE,
@@ -1860,18 +1854,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
   public void testKillUnresponsiveTasksWhileGettingStartTime() throws Exception
   {
     supervisor = getSupervisor(2, 2, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<Task> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -1939,18 +1933,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
     final TaskLocation location = new TaskLocation("testHost", 1234, -1);
 
     supervisor = getSupervisor(2, 2, true, "PT1M", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<Task> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -2044,18 +2038,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
     final TaskLocation location = new TaskLocation("testHost", 1234, -1);
 
     supervisor = getSupervisor(2, 2, true, "PT1M", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Capture<Task> captured = Capture.newInstance(CaptureType.ALL);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
@@ -2167,7 +2161,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   public void testStop()
   {
     supervisorRecordSupplier.close();
-    expectLastCall().anyTimes();
+    EasyMock.expectLastCall().anyTimes();
 
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
     taskClient.close();
@@ -2189,18 +2183,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
     final DateTime startTime = DateTimes.nowUtc();
 
     supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Task id1 = createKinesisIndexTask(
         "id1",
@@ -2335,9 +2329,9 @@ public class KinesisSupervisorTest extends EasyMockSupport
     ), true))
             .andReturn(Futures.immediateFuture(true));
     taskQueue.shutdown("id3", "Killing task for graceful shutdown");
-    expectLastCall().times(1);
+    EasyMock.expectLastCall().times(1);
     taskQueue.shutdown("id3", "Killing task [%s] which hasn't been assigned to a worker", "id3");
-    expectLastCall().times(1);
+    EasyMock.expectLastCall().times(1);
 
     EasyMock.replay(taskRunner, taskClient, taskQueue);
 
@@ -2348,7 +2342,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   @Test
   public void testResetNoTasks() throws Exception
   {
-    expect(supervisorRecordSupplier.getPartitionIds(anyObject())).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(EasyMock.anyObject())).andReturn(Collections.emptySet()).anyTimes();
 
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
@@ -2376,7 +2370,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   @Test
   public void testResetDataSourceMetadata() throws Exception
   {
-    expect(supervisorRecordSupplier.getPartitionIds(anyObject())).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(EasyMock.anyObject())).andReturn(Collections.emptySet()).anyTimes();
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
@@ -2444,7 +2438,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   @Test
   public void testResetNoDataSourceMetadata() throws Exception
   {
-    expect(supervisorRecordSupplier.getPartitionIds(anyObject())).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(EasyMock.anyObject())).andReturn(Collections.emptySet()).anyTimes();
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null);
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
@@ -2482,18 +2476,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
     final DateTime startTime = DateTimes.nowUtc();
 
     supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     Task id1 = createKinesisIndexTask(
         "id1",
@@ -2702,18 +2696,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
         null
     );
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
     EasyMock.expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
@@ -2848,41 +2842,41 @@ public class KinesisSupervisorTest extends EasyMockSupport
     workItems.add(new TestTaskRunnerWorkItem(id2, null, location2));
     workItems.add(new TestTaskRunnerWorkItem(id2, null, location2));
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
-    expect(taskRunner.getRunningTasks()).andReturn(workItems).anyTimes();
-    expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
-    expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
-    expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
-    expect(taskStorage.getStatus("id1")).andReturn(Optional.of(TaskStatus.running("id1"))).anyTimes();
-    expect(taskStorage.getStatus("id2")).andReturn(Optional.of(TaskStatus.running("id2"))).anyTimes();
-    expect(taskStorage.getStatus("id3")).andReturn(Optional.of(TaskStatus.running("id3"))).anyTimes();
-    expect(taskStorage.getTask("id1")).andReturn(Optional.of(id1)).anyTimes();
-    expect(taskStorage.getTask("id2")).andReturn(Optional.of(id2)).anyTimes();
-    expect(taskStorage.getTask("id3")).andReturn(Optional.of(id3)).anyTimes();
-    expect(
+    EasyMock.expect(taskRunner.getRunningTasks()).andReturn(workItems).anyTimes();
+    EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
+    EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
+    EasyMock.expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id1")).andReturn(Optional.of(TaskStatus.running("id1"))).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id2")).andReturn(Optional.of(TaskStatus.running("id2"))).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id3")).andReturn(Optional.of(TaskStatus.running("id3"))).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id1")).andReturn(Optional.of(id1)).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id2")).andReturn(Optional.of(id2)).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id3")).andReturn(Optional.of(id3)).anyTimes();
+    EasyMock.expect(
         indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(new KinesisDataSourceMetadata(
         null)
     ).anyTimes();
-    expect(taskClient.getStatusAsync("id1")).andReturn(Futures.immediateFuture(Status.READING));
-    expect(taskClient.getStatusAsync("id2")).andReturn(Futures.immediateFuture(Status.READING));
-    expect(taskClient.getStatusAsync("id3")).andReturn(Futures.immediateFuture(Status.READING));
+    EasyMock.expect(taskClient.getStatusAsync("id1")).andReturn(Futures.immediateFuture(Status.READING));
+    EasyMock.expect(taskClient.getStatusAsync("id2")).andReturn(Futures.immediateFuture(Status.READING));
+    EasyMock.expect(taskClient.getStatusAsync("id3")).andReturn(Futures.immediateFuture(Status.READING));
 
     final DateTime startTime = DateTimes.nowUtc();
-    expect(taskClient.getStartTimeAsync("id1")).andReturn(Futures.immediateFuture(startTime));
-    expect(taskClient.getStartTimeAsync("id2")).andReturn(Futures.immediateFuture(startTime));
-    expect(taskClient.getStartTimeAsync("id3")).andReturn(Futures.immediateFuture(startTime));
+    EasyMock.expect(taskClient.getStartTimeAsync("id1")).andReturn(Futures.immediateFuture(startTime));
+    EasyMock.expect(taskClient.getStartTimeAsync("id2")).andReturn(Futures.immediateFuture(startTime));
+    EasyMock.expect(taskClient.getStartTimeAsync("id3")).andReturn(Futures.immediateFuture(startTime));
 
     final TreeMap<Integer, Map<String, String>> checkpoints = new TreeMap<>();
     checkpoints.put(0, ImmutableMap.of(
@@ -2891,13 +2885,13 @@ public class KinesisSupervisorTest extends EasyMockSupport
         shardId0,
         "20"
     ));
-    expect(taskClient.getCheckpointsAsync(EasyMock.contains("id1"), EasyMock.anyBoolean()))
+    EasyMock.expect(taskClient.getCheckpointsAsync(EasyMock.contains("id1"), EasyMock.anyBoolean()))
         .andReturn(Futures.immediateFuture(checkpoints))
         .times(1);
-    expect(taskClient.getCheckpointsAsync(EasyMock.contains("id2"), EasyMock.anyBoolean()))
+    EasyMock.expect(taskClient.getCheckpointsAsync(EasyMock.contains("id2"), EasyMock.anyBoolean()))
         .andReturn(Futures.immediateFuture(checkpoints))
         .times(1);
-    expect(taskClient.getCheckpointsAsync(EasyMock.contains("id3"), EasyMock.anyBoolean()))
+    EasyMock.expect(taskClient.getCheckpointsAsync(EasyMock.contains("id3"), EasyMock.anyBoolean()))
         .andReturn(Futures.immediateFuture(checkpoints))
         .times(1);
 
@@ -2934,18 +2928,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
     supervisor = getSupervisor(2, 1, true, "PT1S", null, null, false);
 
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
     //not adding any events
     final Task id1 = createKinesisIndexTask(
@@ -3008,16 +3002,16 @@ public class KinesisSupervisorTest extends EasyMockSupport
         null
     );
 
-    expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
-    expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
-    expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
-    expect(taskStorage.getStatus("id1")).andReturn(Optional.of(TaskStatus.running("id1"))).anyTimes();
-    expect(taskStorage.getStatus("id2")).andReturn(Optional.of(TaskStatus.running("id2"))).anyTimes();
-    expect(taskStorage.getStatus("id3")).andReturn(Optional.of(TaskStatus.running("id3"))).anyTimes();
-    expect(taskStorage.getTask("id1")).andReturn(Optional.of(id1)).anyTimes();
-    expect(taskStorage.getTask("id2")).andReturn(Optional.of(id2)).anyTimes();
-    expect(taskStorage.getTask("id3")).andReturn(Optional.of(id3)).anyTimes();
-    expect(
+    EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
+    EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
+    EasyMock.expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id1")).andReturn(Optional.of(TaskStatus.running("id1"))).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id2")).andReturn(Optional.of(TaskStatus.running("id2"))).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id3")).andReturn(Optional.of(TaskStatus.running("id3"))).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id1")).andReturn(Optional.of(id1)).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id2")).andReturn(Optional.of(id2)).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id3")).andReturn(Optional.of(id3)).anyTimes();
+    EasyMock.expect(
         indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(new KinesisDataSourceMetadata(
         null)
     ).anyTimes();
@@ -3106,36 +3100,36 @@ public class KinesisSupervisorTest extends EasyMockSupport
         null
     );
 
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(Collections.emptySet()).anyTimes();
-    expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
-    expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
-    expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
-    expect(taskStorage.getStatus("id1")).andReturn(Optional.of(TaskStatus.running("id1"))).anyTimes();
-    expect(taskStorage.getStatus("id2")).andReturn(Optional.of(TaskStatus.running("id2"))).anyTimes();
-    expect(taskStorage.getStatus("id3")).andReturn(Optional.of(TaskStatus.running("id3"))).anyTimes();
-    expect(taskStorage.getTask("id1")).andReturn(Optional.of(id1)).anyTimes();
-    expect(taskStorage.getTask("id2")).andReturn(Optional.of(id2)).anyTimes();
-    expect(taskStorage.getTask("id3")).andReturn(Optional.of(id3)).anyTimes();
-    expect(
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
+    EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
+    EasyMock.expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of(id1, id2, id3)).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id1")).andReturn(Optional.of(TaskStatus.running("id1"))).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id2")).andReturn(Optional.of(TaskStatus.running("id2"))).anyTimes();
+    EasyMock.expect(taskStorage.getStatus("id3")).andReturn(Optional.of(TaskStatus.running("id3"))).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id1")).andReturn(Optional.of(id1)).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id2")).andReturn(Optional.of(id2)).anyTimes();
+    EasyMock.expect(taskStorage.getTask("id3")).andReturn(Optional.of(id3)).anyTimes();
+    EasyMock.expect(
         indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(new KinesisDataSourceMetadata(
         null)
     ).anyTimes();
     taskRunner.registerListener(EasyMock.anyObject(TaskRunnerListener.class), EasyMock.anyObject(Executor.class));
-    expect(taskClient.getStatusAsync(EasyMock.anyString()))
+    EasyMock.expect(taskClient.getStatusAsync(EasyMock.anyString()))
         .andReturn(Futures.immediateFuture(Status.READING))
         .anyTimes();
     final TreeMap<Integer, Map<String, String>> checkpoints = new TreeMap<>();
     checkpoints.put(0, ImmutableMap.of(shardId1, "0"));
-    expect(taskClient.getCheckpointsAsync(EasyMock.anyString(), EasyMock.anyBoolean()))
+    EasyMock.expect(taskClient.getCheckpointsAsync(EasyMock.anyString(), EasyMock.anyBoolean()))
         .andReturn(Futures.immediateFuture(checkpoints))
         .times(3);
-    expect(taskClient.getStartTimeAsync(EasyMock.anyString()))
+    EasyMock.expect(taskClient.getStartTimeAsync(EasyMock.anyString()))
         .andReturn(Futures.immediateFuture(DateTimes.nowUtc()))
         .anyTimes();
-    expect(taskClient.pauseAsync(EasyMock.anyString()))
+    EasyMock.expect(taskClient.pauseAsync(EasyMock.anyString()))
         .andReturn(Futures.immediateFuture(ImmutableMap.of(shardId1, "10")))
         .anyTimes();
-    expect(taskClient.setEndOffsetsAsync(
+    EasyMock.expect(taskClient.setEndOffsetsAsync(
         EasyMock.anyString(),
         EasyMock.eq(ImmutableMap.of("0", "10")),
         EasyMock.anyBoolean()
@@ -3171,7 +3165,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   {
     supervisor = getSupervisor(1, 1, true, "PT1H", null, null, true);
 
-    expect(supervisorRecordSupplier.getPartitionIds(anyObject())).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(EasyMock.anyObject())).andReturn(Collections.emptySet()).anyTimes();
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
     EasyMock.expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of()).anyTimes();
@@ -3204,18 +3198,18 @@ public class KinesisSupervisorTest extends EasyMockSupport
 
     supervisor = getSupervisor(2, 1, true, "PT1H", null, null, true);
 
-    supervisorRecordSupplier.assign(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
-    expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
+    supervisorRecordSupplier.assign(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(stream)).andReturn(ImmutableSet.of(shardId1, shardId0)).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getAssignment()).andReturn(ImmutableSet.of(shard1Partition, shard0Partition))
                                                     .anyTimes();
-    supervisorRecordSupplier.seekToLatest(anyObject());
-    expectLastCall().anyTimes();
-    expect(supervisorRecordSupplier.getEarliestSequenceNumber(anyObject())).andReturn("0").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
-    expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
-    supervisorRecordSupplier.seek(anyObject(), anyString());
-    expectLastCall().anyTimes();
+    supervisorRecordSupplier.seekToLatest(EasyMock.anyObject());
+    EasyMock.expectLastCall().anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getEarliestSequenceNumber(EasyMock.anyObject())).andReturn("0").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard1Partition)).andReturn("12").anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getLatestSequenceNumber(shard0Partition)).andReturn("1").anyTimes();
+    supervisorRecordSupplier.seek(EasyMock.anyObject(), EasyMock.anyString());
+    EasyMock.expectLastCall().anyTimes();
 
 
     Task id1 = createKinesisIndexTask(
@@ -3344,9 +3338,9 @@ public class KinesisSupervisorTest extends EasyMockSupport
     ), true))
             .andReturn(Futures.immediateFuture(true));
     taskQueue.shutdown("id3", "Killing task for graceful shutdown");
-    expectLastCall().times(1);
+    EasyMock.expectLastCall().times(1);
     taskQueue.shutdown("id3", "Killing task [%s] which hasn't been assigned to a worker", "id3");
-    expectLastCall().times(1);
+    EasyMock.expectLastCall().times(1);
 
     replayAll();
     supervisor.start();
@@ -3357,7 +3351,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   @Test
   public void testResetSuspended() throws Exception
   {
-    expect(supervisorRecordSupplier.getPartitionIds(anyObject())).andReturn(Collections.emptySet()).anyTimes();
+    EasyMock.expect(supervisorRecordSupplier.getPartitionIds(EasyMock.anyObject())).andReturn(Collections.emptySet()).anyTimes();
     EasyMock.expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     EasyMock.expect(taskMaster.getTaskRunner()).andReturn(Optional.of(taskRunner)).anyTimes();
     EasyMock.expect(taskRunner.getRunningTasks()).andReturn(Collections.EMPTY_LIST).anyTimes();
@@ -3401,12 +3395,12 @@ public class KinesisSupervisorTest extends EasyMockSupport
         ImmutableSet.of()
     );
 
-    expect(taskClient.getMovingAveragesAsync("task1")).andReturn(Futures.immediateFuture(ImmutableMap.of(
+    EasyMock.expect(taskClient.getMovingAveragesAsync("task1")).andReturn(Futures.immediateFuture(ImmutableMap.of(
         "prop1",
         "val1"
     ))).times(1);
 
-    expect(taskClient.getMovingAveragesAsync("task2")).andReturn(Futures.immediateFuture(ImmutableMap.of(
+    EasyMock.expect(taskClient.getMovingAveragesAsync("task2")).andReturn(Futures.immediateFuture(ImmutableMap.of(
         "prop2",
         "val2"
     ))).times(1);
