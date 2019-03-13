@@ -223,7 +223,6 @@ public class SupervisorManager
     return false;
   }
 
-
   /**
    * Stops a supervisor with a given id and then removes it from the list.
    * <p/>

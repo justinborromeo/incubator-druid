@@ -34,6 +34,7 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
 {
   private final String dataSource;
   private final String stream;
+  private final SeekableStreamSupervisor.State currentState;
   private final int partitions;
   private final int replicas;
   private final long durationSeconds;
@@ -44,10 +45,12 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
   private final Long aggregateLag;
   private final DateTime offsetsLastUpdated;
   private final boolean suspended;
+  private final List<ExceptionEvent> exceptionEvents;
 
   public SeekableStreamSupervisorReportPayload(
       String dataSource,
       String stream,
+      SeekableStreamSupervisor.State currentState,
       int partitions,
       int replicas,
       long durationSeconds,
@@ -55,11 +58,13 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
       @Nullable Map<PartitionIdType, SequenceOffsetType> minimumLag,
       @Nullable Long aggregateLag,
       @Nullable DateTime offsetsLastUpdated,
-      boolean suspended
+      boolean suspended,
+      List<ExceptionEvent> exceptionEvents
   )
   {
     this.dataSource = dataSource;
     this.stream = stream;
+    this.currentState = currentState;
     this.partitions = partitions;
     this.replicas = replicas;
     this.durationSeconds = durationSeconds;
@@ -70,6 +75,7 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
     this.aggregateLag = aggregateLag;
     this.offsetsLastUpdated = offsetsLastUpdated;
     this.suspended = suspended;
+    this.exceptionEvents = exceptionEvents;
   }
 
   public void addTask(TaskReportData data)
@@ -93,6 +99,12 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
   public String getStream()
   {
     return stream;
+  }
+
+  @JsonProperty
+  public SeekableStreamSupervisor.State getCurrentState()
+  {
+    return currentState;
   }
 
   @JsonProperty
@@ -154,4 +166,47 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
   {
     return offsetsLastUpdated;
   }
+
+  @JsonProperty
+  public List<ExceptionEvent> getExceptionEvents()
+  {
+    return exceptionEvents;
+  }
+
+  public static class ExceptionEvent
+  {
+    private final DateTime timestamp;
+    private final Exception e;
+    private final SeekableStreamSupervisor.State supervisorState;
+
+    public ExceptionEvent(
+        DateTime timestamp,
+        Exception e,
+        SeekableStreamSupervisor.State supervisorState
+    )
+    {
+      this.timestamp = timestamp;
+      this.e = e;
+      this.supervisorState = supervisorState;
+    }
+
+    @JsonProperty
+    public DateTime getTimestamp()
+    {
+      return timestamp;
+    }
+
+    @JsonProperty
+    public Exception getException()
+    {
+      return e;
+    }
+
+    @JsonProperty
+    public SeekableStreamSupervisor.State getSupervisorState()
+    {
+      return supervisorState;
+    }
+  }
+
 }

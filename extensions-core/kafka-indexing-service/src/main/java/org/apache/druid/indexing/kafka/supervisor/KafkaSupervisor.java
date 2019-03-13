@@ -46,6 +46,9 @@ import org.apache.druid.indexing.seekablestream.SeekableStreamPartitions;
 import org.apache.druid.indexing.seekablestream.common.OrderedSequenceNumber;
 import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
 import org.apache.druid.indexing.seekablestream.common.StreamPartition;
+import org.apache.druid.indexing.seekablestream.exceptions.NonTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.PossiblyTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.TransientStreamException;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisor;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorIOConfig;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorReportPayload;
@@ -56,6 +59,10 @@ import org.apache.druid.java.util.emitter.EmittingLogger;
 import org.apache.druid.java.util.emitter.service.ServiceEmitter;
 import org.apache.druid.java.util.emitter.service.ServiceMetricEvent;
 import org.apache.druid.server.metrics.DruidMonitorSchedulerConfig;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.AuthenticationException;
+import org.apache.kafka.common.errors.AuthorizationException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
@@ -175,9 +182,14 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
   {
     KafkaSupervisorIOConfig ioConfig = spec.getIoConfig();
     Map<Integer, Long> partitionLag = getLagPerPartition(getHighestCurrentOffsets());
+    List<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEvents;
+    synchronized (exceptionEventQueue) {
+      exceptionEvents = new ArrayList<>(exceptionEventQueue);
+    }
     return new KafkaSupervisorReportPayload(
         spec.getDataSchema().getDataSource(),
         ioConfig.getTopic(),
+        state,
         numPartitions,
         ioConfig.getReplicas(),
         ioConfig.getTaskDuration().getMillis() / 1000,
@@ -185,7 +197,8 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
         includeOffsets ? partitionLag : null,
         includeOffsets ? partitionLag.values().stream().mapToLong(x -> Math.max(x, 0)).sum() : null,
         includeOffsets ? sequenceLastUpdated : null,
-        spec.isSuspended()
+        spec.isSuspended(),
+        exceptionEvents
     );
   }
 
@@ -361,11 +374,12 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
       Set<StreamPartition<Integer>> partitions
   )
   {
-    latestSequenceFromStream = partitions.stream()
-                                         .collect(Collectors.toMap(
-                                             StreamPartition::getPartitionId,
-                                             recordSupplier::getPosition
-                                         ));
+      latestSequenceFromStream = partitions.stream()
+                                           .collect(Collectors.toMap(
+                                               StreamPartition::getPartitionId,
+                                               recordSupplier::getPosition
+                                           ));
+
   }
 
   @Override
