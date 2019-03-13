@@ -19,10 +19,12 @@
 
 package org.apache.druid.indexing.kafka.supervisor;
 
+import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisor;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorReportPayload;
 import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
+import java.util.List;
 import java.util.Map;
 
 public class KafkaSupervisorReportPayload extends SeekableStreamSupervisorReportPayload<Integer, Long>
@@ -31,6 +33,7 @@ public class KafkaSupervisorReportPayload extends SeekableStreamSupervisorReport
   public KafkaSupervisorReportPayload(
       String dataSource,
       String topic,
+      SeekableStreamSupervisor.State currentState,
       int partitions,
       int replicas,
       long durationSeconds,
@@ -38,12 +41,14 @@ public class KafkaSupervisorReportPayload extends SeekableStreamSupervisorReport
       @Nullable Map<Integer, Long> minimumLag,
       @Nullable Long aggregateLag,
       @Nullable DateTime offsetsLastUpdated,
-      boolean suspended
+      boolean suspended,
+      List<ExceptionEvent> exceptionEvents
   )
   {
     super(
         dataSource,
         topic,
+        currentState,
         partitions,
         replicas,
         durationSeconds,
@@ -51,7 +56,8 @@ public class KafkaSupervisorReportPayload extends SeekableStreamSupervisorReport
         minimumLag,
         aggregateLag,
         offsetsLastUpdated,
-        suspended
+        suspended,
+        exceptionEvents
     );
   }
 

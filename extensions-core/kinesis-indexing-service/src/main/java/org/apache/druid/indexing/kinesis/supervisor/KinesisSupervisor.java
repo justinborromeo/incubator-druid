@@ -243,13 +243,19 @@ public class KinesisSupervisor extends SeekableStreamSupervisor<String, String>
   )
   {
     KinesisSupervisorIOConfig ioConfig = spec.getIoConfig();
+    List<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEvents;
+    synchronized (exceptionEventQueue) {
+      exceptionEvents = new ArrayList<>(exceptionEventQueue);
+    }
     return new KinesisSupervisorReportPayload(
         spec.getDataSchema().getDataSource(),
         ioConfig.getStream(),
+        state,
         numPartitions,
         ioConfig.getReplicas(),
         ioConfig.getTaskDuration().getMillis() / 1000,
-        spec.isSuspended()
+        spec.isSuspended(),
+        exceptionEvents
     );
   }
 
