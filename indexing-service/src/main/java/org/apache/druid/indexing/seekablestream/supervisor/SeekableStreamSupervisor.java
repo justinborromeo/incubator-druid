@@ -449,6 +449,19 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   protected final List<PartitionIdType> partitionIds = new CopyOnWriteArrayList<>();
   protected volatile DateTime sequenceLastUpdated;
 
+  public enum State
+  {
+    POSTED_NOT_RUNNING_YET,   // Supervisor spec has been posted but waiting for start delay
+    TRYING_TO_CONTACT_STREAM, // Trying to connect to Kafka/Kinesis...hasn’t connected before
+    LOST_CONTACT_WITH_STREAM, // Trying to connect to Kafka/Kinesis...has connected before.
+    UNABLE_TO_POLL_RECORDS,   // Non-connectivity related error occurring when polling for records
+    TASKS_NOT_CREATED_YET,    // Supervisor started but hasn’t started indexing tasks yet
+    RUNNING,                  // Started tasks and waiting for taskDuration to elapse
+    AWAITING_SHUTDOWN,        // Shutdown has been called but the supervisor hasn’t shutdown yet
+    SUSPENDED                 // Supervisor is in a suspended state
+  }
+
+  protected State state;
 
   private final Set<PartitionIdType> subsequentlyDiscoveredPartitions = new HashSet<>();
   private final TaskStorage taskStorage;
@@ -496,6 +509,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       final boolean useExclusiveStartingSequence
   )
   {
+    this.state = State.POSTED_NOT_RUNNING_YET;
     this.taskStorage = taskStorage;
     this.taskMaster = taskMaster;
     this.indexerMetadataStorageCoordinator = indexerMetadataStorageCoordinator;
@@ -628,6 +642,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   public void stop(boolean stopGracefully)
   {
     synchronized (stateChangeLock) {
+      this.state = State.AWAITING_SHUTDOWN;
       Preconditions.checkState(lifecycleStarted, "lifecycle not started");
 
       log.info("Beginning shutdown of [%s]", supervisorId);
@@ -752,6 +767,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
             ioConfig.getStartDelay(),
             spec.toString()
         );
+        this.state = State.TASKS_NOT_CREATED_YET;
       }
       catch (Exception e) {
         if (recordSupplier != null) {
@@ -1014,6 +1030,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     } else {
       log.info("[%s] supervisor is suspended.", dataSource);
       gracefulShutdownInternal();
+      this.state = State.SUSPENDED;
     }
 
     if (log.isDebugEnabled()) {
@@ -2311,7 +2328,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       // just created. This is mainly for the benefit of the status API in situations where the run period is lengthy.
       scheduledExec.schedule(buildRunTask(), 5000, TimeUnit.MILLISECONDS);
     }
-
+    this.state = State.RUNNING;
   }
 
   private void addNotice(Notice notice)
