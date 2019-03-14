@@ -2511,10 +2511,10 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       if (!recordSupplier.getAssignment().contains(topicPartition)) {
         recordSupplier.assign(Collections.singleton(topicPartition));
       }
+      // STATE
       return useEarliestOffset
              ? recordSupplier.getEarliestSequenceNumber(topicPartition)
              : recordSupplier.getLatestSequenceNumber(topicPartition);
-
     }
   }
 
@@ -2613,6 +2613,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   {
     synchronized (recordSupplierLock) {
       Set<PartitionIdType> partitionIds = null;
+      // STATE
       try {
         partitionIds = recordSupplier.getPartitionIds(ioConfig.getStream());
       }
@@ -2628,10 +2629,9 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
 
       recordSupplier.assign(partitions);
       recordSupplier.seekToLatest(partitions);
-
+      // STATE
       updateLatestSequenceFromStream(recordSupplier, partitions);
     }
-
   }
 
   protected abstract void updateLatestSequenceFromStream(
