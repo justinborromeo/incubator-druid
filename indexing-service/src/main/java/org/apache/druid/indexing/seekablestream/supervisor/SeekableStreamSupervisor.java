@@ -67,6 +67,9 @@ import org.apache.druid.indexing.seekablestream.SeekableStreamPartitions;
 import org.apache.druid.indexing.seekablestream.common.OrderedSequenceNumber;
 import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
 import org.apache.druid.indexing.seekablestream.common.StreamPartition;
+import org.apache.druid.indexing.seekablestream.exceptions.NonTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.PossiblyTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.TransientStreamException;
 import org.apache.druid.java.util.common.DateTimes;
 import org.apache.druid.java.util.common.IAE;
 import org.apache.druid.java.util.common.ISE;
@@ -77,6 +80,7 @@ import org.apache.druid.java.util.common.concurrent.Execs;
 import org.apache.druid.java.util.emitter.EmittingLogger;
 import org.apache.druid.metadata.EntryExistsException;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
@@ -454,9 +458,8 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   public enum State
   {
     POSTED_NOT_RUNNING_YET,   // Supervisor spec has been posted but waiting for start delay
-    TRYING_TO_CONTACT_STREAM, // Trying to connect to Kafka/Kinesis...hasn’t connected before
-    LOST_CONTACT_WITH_STREAM, // Trying to connect to Kafka/Kinesis...has connected before.
-    UNABLE_TO_POLL_RECORDS,   // Non-connectivity related error occurring when polling for records
+    LOST_CONTACT_WITH_STREAM, // Trying to perform a stream operation...has connected before -> transient error
+    UNABLE_TO_CONTACT_STREAM, // Trying to perform a stream operation...hasn't connected before -> non-transient error
     TASKS_NOT_CREATED_YET,    // Supervisor started but hasn’t started indexing tasks yet
     RUNNING,                  // Started tasks and waiting for taskDuration to elapse
     AWAITING_SHUTDOWN,        // Shutdown has been called but the supervisor hasn’t shutdown yet
@@ -464,6 +467,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   }
 
   protected State state;
+  private boolean successfullyContactedStreamAtLeastOnce;
   protected final Queue<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEventQueue =
       Queues.synchronizedQueue(EvictingQueue.create(10));
 
@@ -513,6 +517,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   )
   {
     this.state = State.POSTED_NOT_RUNNING_YET;
+    this.successfullyContactedStreamAtLeastOnce = false;
     this.taskStorage = taskStorage;
     this.taskMaster = taskMaster;
     this.indexerMetadataStorageCoordinator = indexerMetadataStorageCoordinator;
@@ -1723,11 +1728,52 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         partitionIds = recordSupplier.getPartitionIds(ioConfig.getStream());
       }
     }
-    catch (Exception e) {
-      log.warn("Could not fetch partitions for topic/stream [%s]", ioConfig.getStream());
+    catch (NonTransientStreamException e) {
+      log.warn(
+          "Could not fetch partitions for topic/stream [%s] due to non-transient error",
+          ioConfig.getStream()
+      );
+      log.debug(e, "full stack trace");
+      state = State.UNABLE_TO_CONTACT_STREAM;
+      return;
+    }
+    catch (PossiblyTransientStreamException e) {
+      if (successfullyContactedStreamAtLeastOnce) {
+        log.warn(
+            "Could not fetch partitions for topic/stream [%s] due to transient error",
+            ioConfig.getStream()
+        );
+        state = State.UNABLE_TO_CONTACT_STREAM;
+      } else {
+        log.warn(
+            "Could not fetch partitions for topic/stream [%s] due to non-transient error",
+            ioConfig.getStream()
+        );
+        state = State.UNABLE_TO_CONTACT_STREAM;
+      }
       log.debug(e, "full stack trace");
       return;
     }
+    catch (TransientStreamException e) {
+      log.warn(
+          "Could not fetch partitions for topic/stream [%s] due to transient error",
+          ioConfig.getStream()
+      );
+      log.debug(e, "full stack trace");
+      state = State.LOST_CONTACT_WITH_STREAM;
+      return;
+    }
+    catch (Exception e) {
+      log.warn(
+          "Could not fetch partitions for topic/stream [%s]",
+          ioConfig.getStream()
+      );
+      log.debug(e, "full stack trace");
+      return;
+    }
+
+    this.successfullyContactedStreamAtLeastOnce = true;
+    state = State.RUNNING;
 
     if (partitionIds == null || partitionIds.size() == 0) {
       log.warn("No partitions found for stream[%s]", ioConfig.getStream());
@@ -2465,10 +2511,10 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       if (!recordSupplier.getAssignment().contains(topicPartition)) {
         recordSupplier.assign(Collections.singleton(topicPartition));
       }
-
       return useEarliestOffset
              ? recordSupplier.getEarliestSequenceNumber(topicPartition)
              : recordSupplier.getLatestSequenceNumber(topicPartition);
+
     }
   }
 
@@ -2833,4 +2879,16 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
    * checks if seqNum marks the end of a Kinesis shard. Used by Kinesis only.
    */
   protected abstract boolean isEndOfShard(SequenceOffsetType seqNum);
+
+  protected void storeThrownException(Exception e, boolean blocking)
+  {
+    exceptionEventQueue.add(
+        new SeekableStreamSupervisorReportPayload.ExceptionEvent(
+            DateTime.now(DateTimeZone.UTC),
+            e,
+            state,
+            blocking
+        )
+    );
+  }
 }

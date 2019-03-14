@@ -367,6 +367,7 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
       Set<StreamPartition<Integer>> partitions
   )
   {
+    //STATE
     latestSequenceFromStream = partitions.stream()
                                          .collect(Collectors.toMap(
                                              StreamPartition::getPartitionId,

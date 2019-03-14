@@ -25,15 +25,24 @@ import org.apache.druid.indexing.kafka.supervisor.KafkaSupervisorIOConfig;
 import org.apache.druid.indexing.seekablestream.common.OrderedPartitionableRecord;
 import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
 import org.apache.druid.indexing.seekablestream.common.StreamPartition;
+import org.apache.druid.indexing.seekablestream.exceptions.NonTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.PossiblyTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.TransientStreamException;
 import org.apache.druid.indexing.seekablestream.utils.RandomIdUtils;
 import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.metadata.PasswordProvider;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.AuthenticationException;
+import org.apache.kafka.common.errors.AuthorizationException;
+import org.apache.kafka.common.errors.BrokerNotAvailableException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.eclipse.aether.repository.Authentication;
 
 import javax.annotation.Nonnull;
 import java.time.Duration;
@@ -125,9 +134,9 @@ public class KafkaRecordSupplier implements RecordSupplier<Integer, Long>
   @Override
   public Long getLatestSequenceNumber(StreamPartition<Integer> partition)
   {
-    Long currPos = consumer.position(new TopicPartition(partition.getStream(), partition.getPartitionId()));
+    Long currPos = getPosition(partition);
     seekToLatest(Collections.singleton(partition));
-    Long nextPos = consumer.position(new TopicPartition(partition.getStream(), partition.getPartitionId()));
+    Long nextPos = getPosition(partition);
     seek(partition, currPos);
     return nextPos;
   }
@@ -135,9 +144,9 @@ public class KafkaRecordSupplier implements RecordSupplier<Integer, Long>
   @Override
   public Long getEarliestSequenceNumber(StreamPartition<Integer> partition)
   {
-    Long currPos = consumer.position(new TopicPartition(partition.getStream(), partition.getPartitionId()));
+    Long currPos = getPosition(partition);
     seekToEarliest(Collections.singleton(partition));
-    Long nextPos = consumer.position(new TopicPartition(partition.getStream(), partition.getPartitionId()));
+    Long nextPos = getPosition(partition);
     seek(partition, currPos);
     return nextPos;
   }
@@ -145,17 +154,39 @@ public class KafkaRecordSupplier implements RecordSupplier<Integer, Long>
   @Override
   public Long getPosition(StreamPartition<Integer> partition)
   {
-    return consumer.position(new TopicPartition(partition.getStream(), partition.getPartitionId()));
+    try {
+      return consumer.position(new TopicPartition(partition.getStream(), partition.getPartitionId()));
+    }
+    catch (AuthenticationException | AuthorizationException e) {
+      throw new NonTransientStreamException(e);
+    }
+    catch (TimeoutException e) {
+      throw new TransientStreamException(e);
+    }
+    catch (KafkaException e) {
+      throw new PossiblyTransientStreamException(e);
+    }
   }
 
   @Override
   public Set<Integer> getPartitionIds(String stream)
   {
-    List<PartitionInfo> partitions = consumer.partitionsFor(stream);
-    if (partitions == null) {
-      throw new ISE("Topic [%s] is not found in KafkaConsumer's list of topics", stream);
+    try {
+      List<PartitionInfo> partitions = consumer.partitionsFor(stream);
+      if (partitions == null) {
+        throw new ISE("Topic [%s] is not found in KafkaConsumer's list of topics", stream);
+      }
+      return partitions.stream().map(PartitionInfo::partition).collect(Collectors.toSet());
     }
-    return partitions.stream().map(PartitionInfo::partition).collect(Collectors.toSet());
+    catch (AuthenticationException | AuthorizationException e) {
+      throw new NonTransientStreamException(e);
+    }
+    catch (TimeoutException e) {
+      throw new TransientStreamException(e);
+    }
+    catch (KafkaException e) {
+      throw new PossiblyTransientStreamException(e);
+    }
   }
 
   @Override

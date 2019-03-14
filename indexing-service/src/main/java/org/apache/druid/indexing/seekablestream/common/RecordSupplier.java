@@ -93,6 +93,7 @@ public interface RecordSupplier<PartitionIdType, SequenceOffsetType extends Comp
    *
    * @return latest sequence number
    */
+  // STATE
   @Nullable
   SequenceOffsetType getLatestSequenceNumber(StreamPartition<PartitionIdType> partition);
 
@@ -103,6 +104,7 @@ public interface RecordSupplier<PartitionIdType, SequenceOffsetType extends Comp
    *
    * @return earliest sequence number
    */
+  //STATE
   @Nullable
   SequenceOffsetType getEarliestSequenceNumber(StreamPartition<PartitionIdType> partition);
 
@@ -114,6 +116,7 @@ public interface RecordSupplier<PartitionIdType, SequenceOffsetType extends Comp
    *
    * @return sequence number
    */
+  //STATE
   SequenceOffsetType getPosition(StreamPartition<PartitionIdType> partition);
 
   /**
