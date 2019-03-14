@@ -1743,7 +1743,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
             "Could not fetch partitions for topic/stream [%s] due to transient error",
             ioConfig.getStream()
         );
-        state = State.UNABLE_TO_CONTACT_STREAM;
+        state = State.LOST_CONTACT_WITH_STREAM;
       } else {
         log.warn(
             "Could not fetch partitions for topic/stream [%s] due to non-transient error",
@@ -2511,10 +2511,27 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       if (!recordSupplier.getAssignment().contains(topicPartition)) {
         recordSupplier.assign(Collections.singleton(topicPartition));
       }
-      // STATE
-      return useEarliestOffset
-             ? recordSupplier.getEarliestSequenceNumber(topicPartition)
-             : recordSupplier.getLatestSequenceNumber(topicPartition);
+      try {
+        return useEarliestOffset
+               ? recordSupplier.getEarliestSequenceNumber(topicPartition)
+               : recordSupplier.getLatestSequenceNumber(topicPartition);
+      }
+      catch (NonTransientStreamException e) {
+        state = State.UNABLE_TO_CONTACT_STREAM;
+        throw e;
+      }
+      catch (PossiblyTransientStreamException e) {
+        if (successfullyContactedStreamAtLeastOnce) {
+          state = State.LOST_CONTACT_WITH_STREAM;
+        } else {
+          state = State.UNABLE_TO_CONTACT_STREAM;
+        }
+        throw e;
+      }
+      catch (TransientStreamException e) {
+        state = State.LOST_CONTACT_WITH_STREAM;
+        throw e;
+      }
     }
   }
 
@@ -2629,8 +2646,25 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
 
       recordSupplier.assign(partitions);
       recordSupplier.seekToLatest(partitions);
-      // STATE
-      updateLatestSequenceFromStream(recordSupplier, partitions);
+      try {
+        updateLatestSequenceFromStream(recordSupplier, partitions);
+      }
+      catch (NonTransientStreamException e) {
+        state = State.UNABLE_TO_CONTACT_STREAM;
+        throw e;
+      }
+      catch (PossiblyTransientStreamException e) {
+        if (successfullyContactedStreamAtLeastOnce) {
+          state = State.LOST_CONTACT_WITH_STREAM;
+        } else {
+          state = State.UNABLE_TO_CONTACT_STREAM;
+        }
+        throw e;
+      }
+      catch (TransientStreamException e) {
+        state = State.LOST_CONTACT_WITH_STREAM;
+        throw e;
+      }
     }
   }
 
