@@ -178,19 +178,16 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
     private final DateTime timestamp;
     private final Exception e;
     private final SeekableStreamSupervisor.State supervisorState;
-    private final boolean blocking;
 
     public ExceptionEvent(
         DateTime timestamp,
         Exception e,
-        SeekableStreamSupervisor.State supervisorState,
-        boolean blocking
+        SeekableStreamSupervisor.State supervisorState
     )
     {
       this.timestamp = timestamp;
       this.e = e;
       this.supervisorState = supervisorState;
-      this.blocking = blocking;
     }
 
     @JsonProperty
@@ -209,12 +206,6 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
     public SeekableStreamSupervisor.State getSupervisorState()
     {
       return supervisorState;
-    }
-
-    @JsonProperty
-    public boolean getBlocking()
-    {
-      return blocking;
     }
   }
 
