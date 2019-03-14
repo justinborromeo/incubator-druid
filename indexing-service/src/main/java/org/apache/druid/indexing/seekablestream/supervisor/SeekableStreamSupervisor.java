@@ -1033,6 +1033,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     if (!spec.isSuspended()) {
       log.info("[%s] supervisor is running.", dataSource);
       createNewTasks();
+      this.state = State.RUNNING;
     } else {
       log.info("[%s] supervisor is suspended.", dataSource);
       gracefulShutdownInternal();
@@ -1776,11 +1777,12 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           ioConfig.getStream()
       );
       log.debug(e, "full stack trace");
+      storeThrownException(e);
+      state = State.RUNNING;
       return;
     }
 
     this.successfullyContactedStreamAtLeastOnce = true;
-    state = State.RUNNING;
 
     if (partitionIds == null || partitionIds.size() == 0) {
       log.warn("No partitions found for stream[%s]", ioConfig.getStream());
@@ -2384,7 +2386,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       // just created. This is mainly for the benefit of the status API in situations where the run period is lengthy.
       scheduledExec.schedule(buildRunTask(), 5000, TimeUnit.MILLISECONDS);
     }
-    this.state = State.RUNNING;
   }
 
   private void addNotice(Notice notice)
