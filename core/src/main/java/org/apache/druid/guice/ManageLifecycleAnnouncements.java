@@ -17,37 +17,25 @@
  * under the License.
  */
 
-package org.apache.druid.java.util.common.concurrent;
+package org.apache.druid.guice;
 
-import org.apache.druid.java.util.common.lifecycle.Lifecycle;
+import com.google.inject.ScopeAnnotation;
+import org.apache.druid.guice.annotations.PublicApi;
 
-import java.util.concurrent.ExecutorService;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public class ExecutorServices
+/**
+ * Marks the object to be managed by {@link org.apache.druid.java.util.common.lifecycle.Lifecycle} and set to be on Stage.ANNOUNCEMENTS
+ *
+ * This Scope gets defined by {@link LifecycleModule}
+ */
+@Target({ ElementType.TYPE, ElementType.METHOD })
+@Retention(RetentionPolicy.RUNTIME)
+@ScopeAnnotation
+@PublicApi
+public @interface ManageLifecycleAnnouncements
 {
-
-  public static <T extends ExecutorService> T manageLifecycle(Lifecycle lifecycle, final T service)
-  {
-    try {
-      lifecycle.addMaybeStartHandler(
-          new Lifecycle.Handler()
-          {
-            @Override
-            public void start()
-            {
-            }
-
-            @Override
-            public void stop()
-            {
-              service.shutdownNow();
-            }
-          }
-      );
-    }
-    catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    return service;
-  }
 }
