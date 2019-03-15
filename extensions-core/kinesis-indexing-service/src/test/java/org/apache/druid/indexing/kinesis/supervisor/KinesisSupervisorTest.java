@@ -3520,7 +3520,8 @@ public class KinesisSupervisorTest extends EasyMockSupport
             rowIngestionMetersFactory,
             null
         ),
-        rowIngestionMetersFactory
+        rowIngestionMetersFactory,
+        supervisorRecordSupplier
     );
   }
 
@@ -3557,32 +3558,6 @@ public class KinesisSupervisorTest extends EasyMockSupport
         null,
         objectMapper
     );
-  }
-
-  private static List<byte[]> jb(
-      String timestamp,
-      String dim1,
-      String dim2,
-      String dimLong,
-      String dimFloat,
-      String met1
-  )
-  {
-    try {
-      return Collections.singletonList(new ObjectMapper().writeValueAsBytes(
-          ImmutableMap.builder()
-                      .put("timestamp", timestamp)
-                      .put("dim1", dim1)
-                      .put("dim2", dim2)
-                      .put("dimLong", dimLong)
-                      .put("dimFloat", dimFloat)
-                      .put("met1", met1)
-                      .build()
-      ));
-    }
-    catch (Exception e) {
-      throw new RuntimeException(e);
-    }
   }
 
   private KinesisIndexTask createKinesisIndexTask(
@@ -3697,7 +3672,8 @@ public class KinesisSupervisorTest extends EasyMockSupport
             rowIngestionMetersFactory,
             null
         ),
-        rowIngestionMetersFactory
+        rowIngestionMetersFactory,
+        supervisorRecordSupplier
     );
   }
 
@@ -3738,6 +3714,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
   private class TestableKinesisSupervisor extends KinesisSupervisor
   {
     private final KinesisSupervisorSpec spec;
+    private final RecordSupplier<String, String> recordSupplier;
 
     public TestableKinesisSupervisor(
         TaskStorage taskStorage,
@@ -3746,7 +3723,8 @@ public class KinesisSupervisorTest extends EasyMockSupport
         KinesisIndexTaskClientFactory taskClientFactory,
         ObjectMapper mapper,
         KinesisSupervisorSpec spec,
-        RowIngestionMetersFactory rowIngestionMetersFactory
+        RowIngestionMetersFactory rowIngestionMetersFactory,
+        RecordSupplier<String, String> recordSupplier
     )
     {
       super(
@@ -3760,6 +3738,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
           null
       );
       this.spec = spec;
+      this.recordSupplier = recordSupplier;
     }
 
     @Override
@@ -3776,9 +3755,7 @@ public class KinesisSupervisorTest extends EasyMockSupport
     @Override
     protected RecordSupplier<String, String> setupRecordSupplier()
     {
-      return supervisorRecordSupplier;
+      return recordSupplier;
     }
-
-
   }
 }
