@@ -754,7 +754,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                 }
               }
               catch (InterruptedException e) {
-                storeThrownException(e);
                 log.info("SeekableStreamSupervisor[%s] interrupted, exiting", dataSource);
               }
             }
@@ -779,7 +778,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         this.state = State.TASKS_NOT_CREATED_YET;
       }
       catch (Exception e) {
-        storeThrownException(e);
         if (recordSupplier != null) {
           recordSupplier.close();
         }
