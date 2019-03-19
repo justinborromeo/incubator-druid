@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -41,7 +41,7 @@ public class CircularBufferTest
   public void testCircularBufferGetLatest()
   {
     for (int i = 0; i < 4; i++) {
-      Assert.assertEquals((Integer)(9 - i), buff.getLatest(i));
+      Assert.assertEquals((Integer) (9 - i), buff.getLatest(i));
     }
   }
 
@@ -49,7 +49,7 @@ public class CircularBufferTest
   public void testCircularBufferGet()
   {
     for (int i = 0; i < 4; i++) {
-      Assert.assertEquals((Integer)(i + 6), buff.get(i));
+      Assert.assertEquals((Integer) (i + 6), buff.get(i));
     }
   }
 

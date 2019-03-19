@@ -35,7 +35,7 @@ public class KinesisSupervisorReportPayload extends SeekableStreamSupervisorRepo
       Integer replicas,
       Long durationSeconds,
       boolean suspended,
-      List<ExceptionEvent> exceptionEvents
+      List<ThrowableEvent> throwableEvents
   )
   {
     super(
@@ -50,7 +50,7 @@ public class KinesisSupervisorReportPayload extends SeekableStreamSupervisorRepo
         null,
         null,
         suspended,
-        exceptionEvents
+        throwableEvents
     );
   }
 

@@ -175,9 +175,9 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
   {
     KafkaSupervisorIOConfig ioConfig = spec.getIoConfig();
     Map<Integer, Long> partitionLag = getLagPerPartition(getHighestCurrentOffsets());
-    List<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEvents;
+    List<SeekableStreamSupervisorReportPayload.ThrowableEvent> throwableEvents;
     synchronized (exceptionEventQueue) {
-      exceptionEvents = exceptionEventQueue.toList();
+      throwableEvents = exceptionEventQueue.toList();
     }
     return new KafkaSupervisorReportPayload(
         spec.getDataSchema().getDataSource(),
@@ -191,7 +191,7 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
         includeOffsets ? partitionLag.values().stream().mapToLong(x -> Math.max(x, 0)).sum() : null,
         includeOffsets ? sequenceLastUpdated : null,
         spec.isSuspended(),
-        exceptionEvents
+        throwableEvents
     );
   }
 
@@ -367,11 +367,11 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
       Set<StreamPartition<Integer>> partitions
   )
   {
-      latestSequenceFromStream = partitions.stream()
-                                           .collect(Collectors.toMap(
-                                               StreamPartition::getPartitionId,
-                                               recordSupplier::getPosition
-                                           ));
+    latestSequenceFromStream = partitions.stream()
+                                         .collect(Collectors.toMap(
+                                             StreamPartition::getPartitionId,
+                                             recordSupplier::getPosition
+                                         ));
 
   }
 

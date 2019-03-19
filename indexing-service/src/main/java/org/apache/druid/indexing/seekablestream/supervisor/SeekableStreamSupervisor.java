@@ -28,12 +28,10 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
-import com.google.common.collect.EvictingQueue;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Queues;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -94,7 +92,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -267,7 +264,13 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       }
       lastRunTime = nowTime;
 
-      runInternal();
+      try {
+        runInternal();
+      }
+      catch (Exception e) {
+        storeThrownThrowable(e);
+        throw e;
+      }
     }
   }
 
@@ -468,7 +471,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   protected State state;
   private boolean successfullyContactedStreamAtLeastOnce;
   // Synchronized because several request threads can try to access this queue at once
-  protected final CircularBuffer<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEventQueue =
+  protected final CircularBuffer<SeekableStreamSupervisorReportPayload.ThrowableEvent> exceptionEventQueue =
       new CircularBuffer<>(10);
 
   private final Set<PartitionIdType> subsequentlyDiscoveredPartitions = new HashSet<>();
@@ -609,7 +612,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         tryInit();
       }
       catch (Exception e) {
-        storeThrownException(e);
+        storeThrownThrowable(e);
         if (!started) {
           log.warn(
               "First initialization attempt failed for SeekableStreamSupervisor[%s], starting retries...",
@@ -703,7 +706,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         log.info("[%s] has stopped", supervisorId);
       }
       catch (Exception e) {
-        storeThrownException(e);
+        storeThrownThrowable(e);
         log.makeAlert(e, "Exception stopping [%s]", supervisorId)
            .emit();
       }
@@ -881,7 +884,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       taskReports.forEach(payload::addTask);
     }
     catch (Exception e) {
-      storeThrownException(e);
+      storeThrownThrowable(e);
       log.warn(e, "Failed to generate status report");
     }
 
@@ -898,11 +901,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
       log.error(ie, "getStats() interrupted.");
-      storeThrownException(ie);
+      storeThrownThrowable(ie);
       throw new RuntimeException(ie);
     }
     catch (ExecutionException | TimeoutException eete) {
-      storeThrownException(eete);
+      storeThrownThrowable(eete);
       throw new RuntimeException(eete);
     }
   }
@@ -1035,6 +1038,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     checkTaskDuration();
     checkPendingCompletionTasks();
     checkCurrentTaskState();
+
     // if supervisor is not suspended, ensure required tasks are running
     // if suspended, ensure tasks have been requested to gracefully stop
     if (!spec.isSuspended()) {
@@ -1180,7 +1184,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
             metadataUpdateSuccess = indexerMetadataStorageCoordinator.resetDataSourceMetadata(dataSource, newMetadata);
           }
           catch (IOException e) {
-            storeThrownException(e);
+            storeThrownThrowable(e);
             log.error("Resetting DataSourceMetadata failed [%s]", e.getMessage());
             throw new RuntimeException(e);
           }
@@ -1347,7 +1351,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                               }
                               catch (InterruptedException | ExecutionException | TimeoutException e) {
                                 log.warn(e, "Exception while stopping task");
-                                storeThrownException(e);
+                                storeThrownThrowable(e);
                               }
                               return false;
                             }
@@ -1364,7 +1368,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                             }
                             catch (InterruptedException | ExecutionException | TimeoutException e) {
                               log.warn(e, "Exception while stopping task");
-                              storeThrownException(e);
+                              storeThrownThrowable(e);
                             }
                             return false;
                           } else {
@@ -1437,7 +1441,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       Futures.allAsList(futures).get(futureTimeoutInSeconds, TimeUnit.SECONDS);
     }
     catch (InterruptedException | ExecutionException | TimeoutException e) {
-      storeThrownException(e);
+      storeThrownThrowable(e);
       throw new RuntimeException(e);
     }
   }
@@ -1478,7 +1482,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           }
           catch (Exception e) {
             log.error(e, "Problem while getting checkpoints for task [%s], killing the task", taskId);
-            storeThrownException(e);
+            storeThrownThrowable(e);
             killTask(taskId, "Exception[%s] while getting checkpoints", e.getClass());
             taskGroup.tasks.remove(taskId);
           }
@@ -1490,7 +1494,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       }
     }
     catch (Exception e) {
-      storeThrownException(e);
+      storeThrownThrowable(e);
       throw new RuntimeException(e);
     }
 
@@ -1717,7 +1721,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       tuningConfig = sortingMapper.writeValueAsString(taskTuningConfig);
     }
     catch (JsonProcessingException e) {
-      storeThrownException(e);
+      storeThrownThrowable(e);
       throw new RuntimeException(e);
     }
 
@@ -1748,7 +1752,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       );
       log.debug(e, "full stack trace");
       state = State.UNABLE_TO_CONTACT_STREAM;
-      storeThrownException(e);
+      storeThrownThrowable(e);
       return;
     }
     catch (PossiblyTransientStreamException e) {
@@ -1758,14 +1762,14 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
             ioConfig.getStream()
         );
         state = State.LOST_CONTACT_WITH_STREAM;
-        storeThrownException(e);
+        storeThrownThrowable(e);
       } else {
         log.warn(
             "Could not fetch partitions for topic/stream [%s] due to non-transient error",
             ioConfig.getStream()
         );
         state = State.UNABLE_TO_CONTACT_STREAM;
-        storeThrownException(e);
+        storeThrownThrowable(e);
       }
       log.debug(e, "full stack trace");
       return;
@@ -1777,7 +1781,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       );
       log.debug(e, "full stack trace");
       state = State.LOST_CONTACT_WITH_STREAM;
-      storeThrownException(e);
+      storeThrownThrowable(e);
       return;
     }
     catch (Exception e) {
@@ -1786,7 +1790,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           ioConfig.getStream()
       );
       log.debug(e, "full stack trace");
-      storeThrownException(e);
+      storeThrownThrowable(e);
       return;
     }
 
@@ -2039,11 +2043,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                   );
                 }
                 catch (InterruptedException e) {
-                  storeThrownException(e);
+                  storeThrownThrowable(e);
                   throw new RuntimeException(e);
                 }
                 catch (ExecutionException e) {
-                  storeThrownException(e);
+                  storeThrownThrowable(e);
                   pauseException = e.getCause() == null ? e : e.getCause();
                 }
 
@@ -2114,7 +2118,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
               }
             }
             catch (Exception e) {
-              storeThrownException(e);
+              storeThrownThrowable(e);
               log.error("Something bad happened [%s]", e.getMessage());
               throw new RuntimeException(e);
             }
@@ -2537,22 +2541,22 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       }
       catch (NonTransientStreamException e) {
         state = State.UNABLE_TO_CONTACT_STREAM;
-        storeThrownException(e);
+        storeThrownThrowable(e);
         throw e;
       }
       catch (PossiblyTransientStreamException e) {
         if (successfullyContactedStreamAtLeastOnce) {
           state = State.LOST_CONTACT_WITH_STREAM;
-          storeThrownException(e);
+          storeThrownThrowable(e);
         } else {
           state = State.UNABLE_TO_CONTACT_STREAM;
-          storeThrownException(e);
+          storeThrownThrowable(e);
         }
         throw e;
       }
       catch (TransientStreamException e) {
         state = State.LOST_CONTACT_WITH_STREAM;
-        storeThrownException(e);
+        storeThrownThrowable(e);
         throw e;
       }
     }
@@ -2601,7 +2605,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           taskQueue.get().add(indexTask);
         }
         catch (EntryExistsException e) {
-          storeThrownException(e);
+          storeThrownThrowable(e);
           log.error("Tried to add task [%s] but it already exists", indexTask.getId());
         }
       } else {
@@ -2620,7 +2624,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         sequenceLastUpdated = DateTimes.nowUtc();
       }
       catch (Exception e) {
-        storeThrownException(e);
+        storeThrownThrowable(e);
         log.warn(e, "Exception while getting current/latest sequences");
       }
     };
@@ -2954,13 +2958,13 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
    */
   protected abstract boolean isEndOfShard(SequenceOffsetType seqNum);
 
-  protected void storeThrownException(Exception e)
+  protected void storeThrownThrowable(Throwable t)
   {
     synchronized (exceptionEventQueue) {
       exceptionEventQueue.add(
-          new SeekableStreamSupervisorReportPayload.ExceptionEvent(
+          new SeekableStreamSupervisorReportPayload.ThrowableEvent(
               DateTime.now(DateTimeZone.UTC),
-              e,
+              t,
               state
           )
       );

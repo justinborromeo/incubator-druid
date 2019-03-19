@@ -1873,7 +1873,6 @@ public class KafkaSupervisorTest extends EasyMockSupport
 
     supervisor.resetInternal(null);
     verifyAll();
-
   }
 
   @Test
@@ -2723,6 +2722,30 @@ public class KafkaSupervisorTest extends EasyMockSupport
     Assert.assertEquals(ImmutableMap.of("task2", ImmutableMap.of("prop2", "val2")), stats.get("1"));
   }
 
+  @Test
+  public void testGetStatus() throws Exception
+  {
+    supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
+    addSomeEvents(1);
+
+    Capture<KafkaIndexTask> captured = Capture.newInstance(CaptureType.ALL);
+    expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
+    expect(taskMaster.getTaskRunner()).andReturn(Optional.absent()).anyTimes();
+    expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of()).anyTimes();
+    expect(indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(
+        new KafkaDataSourceMetadata(
+            null
+        )
+    ).anyTimes();
+    expect(taskQueue.add(capture(captured))).andReturn(true).times(2);
+    replayAll();
+
+    supervisor.start();
+    supervisor.runInternal();
+
+    SupervisorReport<KafkaSupervisorReportPayload> report = supervisor.getStatus();
+    Assert.assertEquals(0, report.getPayload().getThrowableEvents().size());
+  }
 
   private void addSomeEvents(int numEventsPerPartition) throws Exception
   {

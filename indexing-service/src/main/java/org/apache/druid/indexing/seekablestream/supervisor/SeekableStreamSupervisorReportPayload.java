@@ -45,7 +45,7 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
   private final Long aggregateLag;
   private final DateTime offsetsLastUpdated;
   private final boolean suspended;
-  private final List<ExceptionEvent> exceptionEvents;
+  private final List<ThrowableEvent> throwableEvents;
 
   public SeekableStreamSupervisorReportPayload(
       String dataSource,
@@ -59,7 +59,7 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
       @Nullable Long aggregateLag,
       @Nullable DateTime offsetsLastUpdated,
       boolean suspended,
-      List<ExceptionEvent> exceptionEvents
+      List<ThrowableEvent> throwableEvents
   )
   {
     this.dataSource = dataSource;
@@ -75,7 +75,7 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
     this.aggregateLag = aggregateLag;
     this.offsetsLastUpdated = offsetsLastUpdated;
     this.suspended = suspended;
-    this.exceptionEvents = exceptionEvents;
+    this.throwableEvents = throwableEvents;
   }
 
   public void addTask(TaskReportData data)
@@ -168,25 +168,25 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
   }
 
   @JsonProperty
-  public List<ExceptionEvent> getExceptionEvents()
+  public List<ThrowableEvent> getThrowableEvents()
   {
-    return exceptionEvents;
+    return throwableEvents;
   }
 
-  public static class ExceptionEvent
+  public static class ThrowableEvent
   {
     private final DateTime timestamp;
-    private final Exception e;
+    private final Throwable t;
     private final SeekableStreamSupervisor.State supervisorState;
 
-    public ExceptionEvent(
+    public ThrowableEvent(
         DateTime timestamp,
-        Exception e,
+        Throwable t,
         SeekableStreamSupervisor.State supervisorState
     )
     {
       this.timestamp = timestamp;
-      this.e = e;
+      this.t = t;
       this.supervisorState = supervisorState;
     }
 
@@ -197,9 +197,9 @@ public abstract class SeekableStreamSupervisorReportPayload<PartitionIdType, Seq
     }
 
     @JsonProperty
-    public Exception getException()
+    public Throwable getThrowable()
     {
-      return e;
+      return t;
     }
 
     @JsonProperty

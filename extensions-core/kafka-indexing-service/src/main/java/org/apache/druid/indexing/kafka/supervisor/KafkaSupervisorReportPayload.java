@@ -42,7 +42,7 @@ public class KafkaSupervisorReportPayload extends SeekableStreamSupervisorReport
       @Nullable Long aggregateLag,
       @Nullable DateTime offsetsLastUpdated,
       boolean suspended,
-      List<ExceptionEvent> exceptionEvents
+      List<ThrowableEvent> throwableEvents
   )
   {
     super(
@@ -57,7 +57,7 @@ public class KafkaSupervisorReportPayload extends SeekableStreamSupervisorReport
         aggregateLag,
         offsetsLastUpdated,
         suspended,
-        exceptionEvents
+        throwableEvents
     );
   }
 
