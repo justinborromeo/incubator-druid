@@ -466,6 +466,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
 
   protected State state;
   private boolean successfullyContactedStreamAtLeastOnce;
+  // Synchronized because several request threads can try to access this queue at once
   protected final Queue<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEventQueue =
       Queues.synchronizedQueue(EvictingQueue.create(10));
 
