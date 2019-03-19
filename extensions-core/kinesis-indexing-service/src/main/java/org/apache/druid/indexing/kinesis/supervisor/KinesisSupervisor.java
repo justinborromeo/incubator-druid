@@ -245,7 +245,7 @@ public class KinesisSupervisor extends SeekableStreamSupervisor<String, String>
     KinesisSupervisorIOConfig ioConfig = spec.getIoConfig();
     List<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEvents;
     synchronized (exceptionEventQueue) {
-      exceptionEvents = new ArrayList<>(exceptionEventQueue);
+      exceptionEvents = exceptionEventQueue.toList();
     }
     return new KinesisSupervisorReportPayload(
         spec.getDataSchema().getDataSource(),

@@ -78,6 +78,7 @@ import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.concurrent.Execs;
 import org.apache.druid.java.util.emitter.EmittingLogger;
 import org.apache.druid.metadata.EntryExistsException;
+import org.apache.druid.utils.CircularBuffer;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -467,8 +468,8 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   protected State state;
   private boolean successfullyContactedStreamAtLeastOnce;
   // Synchronized because several request threads can try to access this queue at once
-  protected final Queue<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEventQueue =
-      Queues.synchronizedQueue(EvictingQueue.create(10));
+  protected final CircularBuffer<SeekableStreamSupervisorReportPayload.ExceptionEvent> exceptionEventQueue =
+      new CircularBuffer<>(10);
 
   private final Set<PartitionIdType> subsequentlyDiscoveredPartitions = new HashSet<>();
   private final TaskStorage taskStorage;
@@ -1042,8 +1043,8 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       this.state = State.RUNNING;
     } else {
       log.info("[%s] supervisor is suspended.", dataSource);
-      gracefulShutdownInternal();
       this.state = State.SUSPENDED;
+      gracefulShutdownInternal();
     }
 
     if (log.isDebugEnabled()) {
@@ -1748,7 +1749,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       log.debug(e, "full stack trace");
       state = State.UNABLE_TO_CONTACT_STREAM;
       storeThrownException(e);
-      state = State.RUNNING;
       return;
     }
     catch (PossiblyTransientStreamException e) {
@@ -1759,8 +1759,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         );
         state = State.LOST_CONTACT_WITH_STREAM;
         storeThrownException(e);
-        state = State.RUNNING;
-
       } else {
         log.warn(
             "Could not fetch partitions for topic/stream [%s] due to non-transient error",
@@ -1768,7 +1766,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         );
         state = State.UNABLE_TO_CONTACT_STREAM;
         storeThrownException(e);
-        state = State.RUNNING;
       }
       log.debug(e, "full stack trace");
       return;
@@ -1781,7 +1778,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       log.debug(e, "full stack trace");
       state = State.LOST_CONTACT_WITH_STREAM;
       storeThrownException(e);
-      state = State.RUNNING;
       return;
     }
     catch (Exception e) {
@@ -1791,7 +1787,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       );
       log.debug(e, "full stack trace");
       storeThrownException(e);
-      state = State.RUNNING;
       return;
     }
 
@@ -2543,7 +2538,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       catch (NonTransientStreamException e) {
         state = State.UNABLE_TO_CONTACT_STREAM;
         storeThrownException(e);
-        state = State.RUNNING;
         throw e;
       }
       catch (PossiblyTransientStreamException e) {
@@ -2553,14 +2547,12 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         } else {
           state = State.UNABLE_TO_CONTACT_STREAM;
           storeThrownException(e);
-          state = State.RUNNING;
         }
         throw e;
       }
       catch (TransientStreamException e) {
         state = State.LOST_CONTACT_WITH_STREAM;
         storeThrownException(e);
-        state = State.RUNNING;
         throw e;
       }
     }
@@ -2964,12 +2956,14 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
 
   protected void storeThrownException(Exception e)
   {
-    exceptionEventQueue.add(
-        new SeekableStreamSupervisorReportPayload.ExceptionEvent(
-            DateTime.now(DateTimeZone.UTC),
-            e,
-            state
-        )
-    );
+    synchronized (exceptionEventQueue) {
+      exceptionEventQueue.add(
+          new SeekableStreamSupervisorReportPayload.ExceptionEvent(
+              DateTime.now(DateTimeZone.UTC),
+              e,
+              state
+          )
+      );
+    }
   }
 }
