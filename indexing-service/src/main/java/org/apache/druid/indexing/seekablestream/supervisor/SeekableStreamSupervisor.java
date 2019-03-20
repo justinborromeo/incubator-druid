@@ -268,7 +268,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         runInternal();
       }
       catch (Exception e) {
-        storeThrownThrowable(e);
+        storeExceptionAndUpdateState(e, );
         throw e;
       }
     }
@@ -431,6 +431,17 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     }
   }
 
+  public enum State
+  {
+    POSTED_NOT_RUNNING_YET,   // Supervisor spec has been posted but waiting for start delay
+    LOST_CONTACT_WITH_STREAM, // Trying to perform a stream operation...has connected before -> transient error
+    UNABLE_TO_CONTACT_STREAM, // Trying to perform a stream operation...hasn't connected before -> non-transient error
+    TASKS_NOT_CREATED_YET,    // Supervisor started but hasn’t started indexing tasks yet
+    RUNNING,                  // Started tasks and waiting for taskDuration to elapse
+    AWAITING_SHUTDOWN,        // Shutdown has been called but the supervisor hasn’t shutdown yet
+    SUSPENDED,                // Supervisor is in a suspended state
+    UNABLE_TO_CREATE_TASKS    // Unable to create tasks for some non-stream related reason
+  }
 
   // Map<{group RandomIdUtils}, {actively reading task group}>; see documentation for TaskGroup class
   private final ConcurrentHashMap<Integer, TaskGroup> activelyReadingTaskGroups = new ConcurrentHashMap<>();
@@ -455,24 +466,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
 
   protected final ObjectMapper sortingMapper;
   protected final List<PartitionIdType> partitionIds = new CopyOnWriteArrayList<>();
-  protected volatile DateTime sequenceLastUpdated;
-
-  public enum State
-  {
-    POSTED_NOT_RUNNING_YET,   // Supervisor spec has been posted but waiting for start delay
-    LOST_CONTACT_WITH_STREAM, // Trying to perform a stream operation...has connected before -> transient error
-    UNABLE_TO_CONTACT_STREAM, // Trying to perform a stream operation...hasn't connected before -> non-transient error
-    TASKS_NOT_CREATED_YET,    // Supervisor started but hasn’t started indexing tasks yet
-    RUNNING,                  // Started tasks and waiting for taskDuration to elapse
-    AWAITING_SHUTDOWN,        // Shutdown has been called but the supervisor hasn’t shutdown yet
-    SUSPENDED                 // Supervisor is in a suspended state
-  }
-
-  protected State state;
-  private boolean successfullyContactedStreamAtLeastOnce;
-  // Synchronized because several request threads can try to access this queue at once
   protected final CircularBuffer<SeekableStreamSupervisorReportPayload.ThrowableEvent> exceptionEventQueue =
       new CircularBuffer<>(10);
+
+  protected volatile DateTime sequenceLastUpdated;
+  protected volatile State state;
 
   private final Set<PartitionIdType> subsequentlyDiscoveredPartitions = new HashSet<>();
   private final TaskStorage taskStorage;
@@ -496,9 +494,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   private final Object stopLock = new Object();
   private final Object stateChangeLock = new Object();
   private final Object recordSupplierLock = new Object();
-
   private final boolean useExclusiveStartingSequence;
+
   private boolean listenerRegistered = false;
+  private boolean successfullyContactedStreamAtLeastOnce = false;
+  private boolean issueEncounteredOnCurrentIteration = false;
   private long lastRunTime;
   private int initRetryCounter = 0;
   private volatile DateTime firstRunTime;
@@ -520,7 +520,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   )
   {
     this.state = State.POSTED_NOT_RUNNING_YET;
-    this.successfullyContactedStreamAtLeastOnce = false;
     this.taskStorage = taskStorage;
     this.taskMaster = taskMaster;
     this.indexerMetadataStorageCoordinator = indexerMetadataStorageCoordinator;
@@ -612,7 +611,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         tryInit();
       }
       catch (Exception e) {
-        storeThrownThrowable(e);
+        storeExceptionAndUpdateState(e, );
         if (!started) {
           log.warn(
               "First initialization attempt failed for SeekableStreamSupervisor[%s], starting retries...",
@@ -654,7 +653,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   public void stop(boolean stopGracefully)
   {
     synchronized (stateChangeLock) {
-      this.state = State.AWAITING_SHUTDOWN;
+      setState(State.AWAITING_SHUTDOWN);
       Preconditions.checkState(lifecycleStarted, "lifecycle not started");
 
       log.info("Beginning shutdown of [%s]", supervisorId);
@@ -706,7 +705,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         log.info("[%s] has stopped", supervisorId);
       }
       catch (Exception e) {
-        storeThrownThrowable(e);
+        storeExceptionAndUpdateState(e, );
         log.makeAlert(e, "Exception stopping [%s]", supervisorId)
            .emit();
       }
@@ -780,7 +779,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
             ioConfig.getStartDelay(),
             spec.toString()
         );
-        this.state = State.TASKS_NOT_CREATED_YET;
+        setState(State.TASKS_NOT_CREATED_YET);
       }
       catch (Exception e) {
         if (recordSupplier != null) {
@@ -884,7 +883,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       taskReports.forEach(payload::addTask);
     }
     catch (Exception e) {
-      storeThrownThrowable(e);
+      storeExceptionAndUpdateState(e, );
       log.warn(e, "Failed to generate status report");
     }
 
@@ -901,11 +900,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
       log.error(ie, "getStats() interrupted.");
-      storeThrownThrowable(ie);
+      storeExceptionAndUpdateState(ie, );
       throw new RuntimeException(ie);
     }
     catch (ExecutionException | TimeoutException eete) {
-      storeThrownThrowable(eete);
+      storeExceptionAndUpdateState(eete, );
       throw new RuntimeException(eete);
     }
   }
@@ -1031,6 +1030,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   public void runInternal()
       throws ExecutionException, InterruptedException, TimeoutException, JsonProcessingException
   {
+    issueEncounteredOnCurrentIteration = false;
     possiblyRegisterListener();
     updatePartitionDataFromStream();
     discoverTasks();
@@ -1044,10 +1044,12 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
     if (!spec.isSuspended()) {
       log.info("[%s] supervisor is running.", dataSource);
       createNewTasks();
-      this.state = State.RUNNING;
+      if (!issueEncounteredOnCurrentIteration) {
+        setState(State.RUNNING);
+      }
     } else {
       log.info("[%s] supervisor is suspended.", dataSource);
-      this.state = State.SUSPENDED;
+      setState(State.SUSPENDED);
       gracefulShutdownInternal();
     }
 
@@ -1184,7 +1186,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
             metadataUpdateSuccess = indexerMetadataStorageCoordinator.resetDataSourceMetadata(dataSource, newMetadata);
           }
           catch (IOException e) {
-            storeThrownThrowable(e);
+            storeExceptionAndUpdateState(e, );
             log.error("Resetting DataSourceMetadata failed [%s]", e.getMessage());
             throw new RuntimeException(e);
           }
@@ -1351,7 +1353,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                               }
                               catch (InterruptedException | ExecutionException | TimeoutException e) {
                                 log.warn(e, "Exception while stopping task");
-                                storeThrownThrowable(e);
+                                storeExceptionAndUpdateState(e, );
                               }
                               return false;
                             }
@@ -1368,7 +1370,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                             }
                             catch (InterruptedException | ExecutionException | TimeoutException e) {
                               log.warn(e, "Exception while stopping task");
-                              storeThrownThrowable(e);
+                              storeExceptionAndUpdateState(e, );
                             }
                             return false;
                           } else {
@@ -1415,7 +1417,6 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       }
     }
 
-
     List<Boolean> results = Futures.successfulAsList(futures).get(futureTimeoutInSeconds, TimeUnit.SECONDS);
     for (int i = 0; i < results.size(); i++) {
       if (results.get(i) == null) {
@@ -1441,7 +1442,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       Futures.allAsList(futures).get(futureTimeoutInSeconds, TimeUnit.SECONDS);
     }
     catch (InterruptedException | ExecutionException | TimeoutException e) {
-      storeThrownThrowable(e);
+      storeExceptionAndUpdateState(e, );
       throw new RuntimeException(e);
     }
   }
@@ -1482,7 +1483,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           }
           catch (Exception e) {
             log.error(e, "Problem while getting checkpoints for task [%s], killing the task", taskId);
-            storeThrownThrowable(e);
+            storeExceptionAndUpdateState(e, );
             killTask(taskId, "Exception[%s] while getting checkpoints", e.getClass());
             taskGroup.tasks.remove(taskId);
           }
@@ -1494,7 +1495,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       }
     }
     catch (Exception e) {
-      storeThrownThrowable(e);
+      storeExceptionAndUpdateState(e, );
       throw new RuntimeException(e);
     }
 
@@ -1721,7 +1722,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       tuningConfig = sortingMapper.writeValueAsString(taskTuningConfig);
     }
     catch (JsonProcessingException e) {
-      storeThrownThrowable(e);
+      storeExceptionAndUpdateState(e, );
       throw new RuntimeException(e);
     }
 
@@ -1745,52 +1746,9 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         partitionIds = recordSupplier.getPartitionIds(ioConfig.getStream());
       }
     }
-    catch (NonTransientStreamException e) {
-      log.warn(
-          "Could not fetch partitions for topic/stream [%s] due to non-transient error",
-          ioConfig.getStream()
-      );
-      log.debug(e, "full stack trace");
-      state = State.UNABLE_TO_CONTACT_STREAM;
-      storeThrownThrowable(e);
-      return;
-    }
-    catch (PossiblyTransientStreamException e) {
-      if (successfullyContactedStreamAtLeastOnce) {
-        log.warn(
-            "Could not fetch partitions for topic/stream [%s] due to transient error",
-            ioConfig.getStream()
-        );
-        state = State.LOST_CONTACT_WITH_STREAM;
-        storeThrownThrowable(e);
-      } else {
-        log.warn(
-            "Could not fetch partitions for topic/stream [%s] due to non-transient error",
-            ioConfig.getStream()
-        );
-        state = State.UNABLE_TO_CONTACT_STREAM;
-        storeThrownThrowable(e);
-      }
-      log.debug(e, "full stack trace");
-      return;
-    }
-    catch (TransientStreamException e) {
-      log.warn(
-          "Could not fetch partitions for topic/stream [%s] due to transient error",
-          ioConfig.getStream()
-      );
-      log.debug(e, "full stack trace");
-      state = State.LOST_CONTACT_WITH_STREAM;
-      storeThrownThrowable(e);
-      return;
-    }
     catch (Exception e) {
-      log.warn(
-          "Could not fetch partitions for topic/stream [%s]",
-          ioConfig.getStream()
-      );
-      log.debug(e, "full stack trace");
-      storeThrownThrowable(e);
+      storeExceptionAndUpdateState(e, Optional.of(State.UNABLE_TO_CREATE_TASKS));
+      log.warn("Could not fetch partitions for topic/stream [%s]", ioConfig.getStream());
       return;
     }
 
@@ -2043,11 +2001,11 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                   );
                 }
                 catch (InterruptedException e) {
-                  storeThrownThrowable(e);
+                  storeExceptionAndUpdateState(e, );
                   throw new RuntimeException(e);
                 }
                 catch (ExecutionException e) {
-                  storeThrownThrowable(e);
+                  storeExceptionAndUpdateState(e, );
                   pauseException = e.getCause() == null ? e : e.getCause();
                 }
 
@@ -2118,7 +2076,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
               }
             }
             catch (Exception e) {
-              storeThrownThrowable(e);
+              storeExceptionAndUpdateState(e, );
               log.error("Something bad happened [%s]", e.getMessage());
               throw new RuntimeException(e);
             }
@@ -2539,25 +2497,8 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
                ? recordSupplier.getEarliestSequenceNumber(topicPartition)
                : recordSupplier.getLatestSequenceNumber(topicPartition);
       }
-      catch (NonTransientStreamException e) {
-        state = State.UNABLE_TO_CONTACT_STREAM;
-        storeThrownThrowable(e);
-        throw e;
-      }
-      catch (PossiblyTransientStreamException e) {
-        if (successfullyContactedStreamAtLeastOnce) {
-          state = State.LOST_CONTACT_WITH_STREAM;
-          storeThrownThrowable(e);
-        } else {
-          state = State.UNABLE_TO_CONTACT_STREAM;
-          storeThrownThrowable(e);
-        }
-        throw e;
-      }
-      catch (TransientStreamException e) {
-        state = State.LOST_CONTACT_WITH_STREAM;
-        storeThrownThrowable(e);
-        throw e;
+      catch (Exception e) {
+        storeExceptionAndUpdateState(e, );
       }
     }
   }
@@ -2605,7 +2546,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
           taskQueue.get().add(indexTask);
         }
         catch (EntryExistsException e) {
-          storeThrownThrowable(e);
+          storeExceptionAndUpdateState(e, Optional.absent());
           log.error("Tried to add task [%s] but it already exists", indexTask.getId());
         }
       } else {
@@ -2624,7 +2565,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         sequenceLastUpdated = DateTimes.nowUtc();
       }
       catch (Exception e) {
-        storeThrownThrowable(e);
+        storeExceptionAndUpdateState(e, Optional.absent());
         log.warn(e, "Exception while getting current/latest sequences");
       }
     };
@@ -2663,19 +2604,19 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         partitionIds = recordSupplier.getPartitionIds(ioConfig.getStream());
       }
       catch (NonTransientStreamException e) {
-        state = State.UNABLE_TO_CONTACT_STREAM;
+        setState(State.UNABLE_TO_CONTACT_STREAM);
         throw e;
       }
       catch (PossiblyTransientStreamException e) {
         if (successfullyContactedStreamAtLeastOnce) {
-          state = State.LOST_CONTACT_WITH_STREAM;
+          setState(State.LOST_CONTACT_WITH_STREAM);
         } else {
-          state = State.UNABLE_TO_CONTACT_STREAM;
+          setState(State.UNABLE_TO_CONTACT_STREAM);
         }
         throw e;
       }
       catch (TransientStreamException e) {
-        state = State.LOST_CONTACT_WITH_STREAM;
+        setState(State.LOST_CONTACT_WITH_STREAM);
         throw e;
       }
       catch (Exception e) {
@@ -2694,19 +2635,19 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
         updateLatestSequenceFromStream(recordSupplier, partitions);
       }
       catch (NonTransientStreamException e) {
-        state = State.UNABLE_TO_CONTACT_STREAM;
+        setState(State.UNABLE_TO_CONTACT_STREAM);
         throw e;
       }
       catch (PossiblyTransientStreamException e) {
         if (successfullyContactedStreamAtLeastOnce) {
-          state = State.LOST_CONTACT_WITH_STREAM;
+          setState(State.LOST_CONTACT_WITH_STREAM);
         } else {
-          state = State.UNABLE_TO_CONTACT_STREAM;
+          setState(State.UNABLE_TO_CONTACT_STREAM);
         }
         throw e;
       }
       catch (TransientStreamException e) {
-        state = State.LOST_CONTACT_WITH_STREAM;
+        setState(State.LOST_CONTACT_WITH_STREAM);
         throw e;
       }
     }
@@ -2958,7 +2899,30 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
    */
   protected abstract boolean isEndOfShard(SequenceOffsetType seqNum);
 
-  protected void storeThrownThrowable(Throwable t)
+  private void storeExceptionAndUpdateState(Throwable t, Optional<State> nonStreamExceptionState)
+  {
+    if (t instanceof TransientStreamException ||
+        (t instanceof PossiblyTransientStreamException && successfullyContactedStreamAtLeastOnce)) {
+      setState(State.LOST_CONTACT_WITH_STREAM);
+    } else if (t instanceof NonTransientStreamException || t instanceof PossiblyTransientStreamException) {
+      setState(State.UNABLE_TO_CONTACT_STREAM);
+    } else if (nonStreamExceptionState.isPresent()){
+      setState(nonStreamExceptionState.get());
+    }
+    log.debug(t, "full stack trace");
+    storeThrownThrowable(t);
+  }
+
+  private void setState(State newState)
+  {
+    this.state = newState;
+    if (newState.equals(State.UNABLE_TO_CONTACT_STREAM) ||
+        newState.equals(State.LOST_CONTACT_WITH_STREAM)) {
+      issueEncounteredOnCurrentIteration = true;
+    }
+  }
+
+  private void storeThrownThrowable(Throwable t)
   {
     synchronized (exceptionEventQueue) {
       exceptionEventQueue.add(

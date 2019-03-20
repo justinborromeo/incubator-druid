@@ -2768,6 +2768,8 @@ public class KafkaSupervisorTest extends EasyMockSupport
     Assert.assertEquals(1, report.getPayload().getThrowableEvents().size());
     Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
                         report.getPayload().getThrowableEvents().get(0).getSupervisorState());
+    Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
+                        report.getPayload().getCurrentState());
     Assert.assertTrue(report.getPayload().getThrowableEvents().get(0).getThrowable() instanceof NonTransientStreamException);
     verifyAll();
 

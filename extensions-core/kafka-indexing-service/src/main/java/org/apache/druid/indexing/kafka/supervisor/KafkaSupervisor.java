@@ -194,8 +194,7 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
         throwableEvents
     );
   }
-
-
+  
   @Override
   protected SeekableStreamIndexTaskIOConfig createTaskIoConfig(
       int groupId,
