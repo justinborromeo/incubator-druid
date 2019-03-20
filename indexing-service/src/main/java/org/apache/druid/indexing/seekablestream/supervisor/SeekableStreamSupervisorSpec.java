@@ -158,6 +158,4 @@ public abstract class SeekableStreamSupervisorSpec implements SupervisorSpec
   }
 
   protected abstract SeekableStreamSupervisorSpec toggleSuspend(boolean suspend);
-
-
 }

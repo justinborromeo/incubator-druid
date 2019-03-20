@@ -61,6 +61,12 @@ import org.apache.druid.indexing.overlord.TaskStorage;
 import org.apache.druid.indexing.overlord.supervisor.SupervisorReport;
 import org.apache.druid.indexing.seekablestream.SeekableStreamIndexTaskRunner.Status;
 import org.apache.druid.indexing.seekablestream.SeekableStreamPartitions;
+import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
+import org.apache.druid.indexing.seekablestream.common.StreamPartition;
+import org.apache.druid.indexing.seekablestream.exceptions.NonTransientStreamException;
+import org.apache.druid.indexing.seekablestream.exceptions.PossiblyTransientStreamException;
+import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisor;
+import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorReportPayload;
 import org.apache.druid.indexing.seekablestream.supervisor.TaskReportData;
 import org.apache.druid.java.util.common.DateTimes;
 import org.apache.druid.java.util.common.ISE;
@@ -80,6 +86,8 @@ import org.apache.druid.server.metrics.ExceptionCapturingServiceEmitter;
 import org.apache.druid.server.metrics.NoopServiceEmitter;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.BrokerNotAvailableException;
 import org.apache.kafka.common.security.JaasUtils;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
@@ -2723,12 +2731,25 @@ public class KafkaSupervisorTest extends EasyMockSupport
   }
 
   @Test
-  public void testGetStatus() throws Exception
+  public void testGetRecentlyThrownExceptions() throws Exception
   {
-    supervisor = getSupervisor(2, 1, true, "PT1H", null, null);
+    RecordSupplier<Integer, Long> mockRecordSupplier = mock(RecordSupplier.class);
+    expect(mockRecordSupplier.getPartitionIds(anyObject()))
+        .andThrow(new NonTransientStreamException(new KafkaException("exception")))
+        .once();
+
+    supervisor = getTestableKafkaSupervisorWithOverriddenRecordSupplier(
+        2,
+        1,
+        true,
+        "PT1H",
+        null,
+        null,
+        mockRecordSupplier
+    );
+
     addSomeEvents(1);
 
-    Capture<KafkaIndexTask> captured = Capture.newInstance(CaptureType.ALL);
     expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
     expect(taskMaster.getTaskRunner()).andReturn(Optional.absent()).anyTimes();
     expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of()).anyTimes();
@@ -2737,14 +2758,55 @@ public class KafkaSupervisorTest extends EasyMockSupport
             null
         )
     ).anyTimes();
-    expect(taskQueue.add(capture(captured))).andReturn(true).times(2);
+
     replayAll();
 
     supervisor.start();
     supervisor.runInternal();
 
     SupervisorReport<KafkaSupervisorReportPayload> report = supervisor.getStatus();
-    Assert.assertEquals(0, report.getPayload().getThrowableEvents().size());
+    Assert.assertEquals(1, report.getPayload().getThrowableEvents().size());
+    Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
+                        report.getPayload().getThrowableEvents().get(0).getSupervisorState());
+    Assert.assertTrue(report.getPayload().getThrowableEvents().get(0).getThrowable() instanceof NonTransientStreamException);
+    verifyAll();
+
+
+    resetAll();
+    mockRecordSupplier = mock(RecordSupplier.class);
+    expect(mockRecordSupplier.getPartitionIds(anyObject()))
+        .andThrow(new PossiblyTransientStreamException(new BrokerNotAvailableException("exception")))
+        .once();
+    supervisor = getTestableKafkaSupervisorWithOverriddenRecordSupplier(
+        2,
+        1,
+        true,
+        "PT1H",
+        null,
+        null,
+        mockRecordSupplier
+    );
+
+    expect(taskMaster.getTaskQueue()).andReturn(Optional.of(taskQueue)).anyTimes();
+    expect(taskMaster.getTaskRunner()).andReturn(Optional.absent()).anyTimes();
+    expect(taskStorage.getActiveTasks()).andReturn(ImmutableList.of()).anyTimes();
+    expect(indexerMetadataStorageCoordinator.getDataSourceMetadata(DATASOURCE)).andReturn(
+        new KafkaDataSourceMetadata(
+            null
+        )
+    ).anyTimes();
+
+
+    replayAll();
+
+    supervisor.start();
+    supervisor.runInternal();
+
+    report = supervisor.getStatus();
+    Assert.assertEquals(1, report.getPayload().getThrowableEvents().size());
+    Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
+                        report.getPayload().getThrowableEvents().get(0).getSupervisorState());
+    Assert.assertTrue(report.getPayload().getThrowableEvents().get(0).getThrowable() instanceof PossiblyTransientStreamException);
   }
 
   private void addSomeEvents(int numEventsPerPartition) throws Exception
@@ -2865,6 +2927,82 @@ public class KafkaSupervisorTest extends EasyMockSupport
             rowIngestionMetersFactory
         ),
         rowIngestionMetersFactory
+    );
+  }
+
+  private TestableKafkaSupervisorWithOverriddenRecordSupplier getTestableKafkaSupervisorWithOverriddenRecordSupplier(
+      int replicas,
+      int taskCount,
+      boolean useEarliestOffset,
+      String duration,
+      Period lateMessageRejectionPeriod,
+      Period earlyMessageRejectionPeriod,
+      RecordSupplier<Integer, Long> recordSupplier
+  )
+  {
+    Map<String, Object> consumerProperties = new HashMap<>();
+    consumerProperties.put("myCustomKey", "myCustomValue");
+    consumerProperties.put("bootstrap.servers", kafkaHost);
+    consumerProperties.put("isolation.level", "read_committed");
+    KafkaSupervisorIOConfig kafkaSupervisorIOConfig = new KafkaSupervisorIOConfig(
+        topic,
+        replicas,
+        taskCount,
+        new Period(duration),
+        consumerProperties,
+        KafkaSupervisorIOConfig.DEFAULT_POLL_TIMEOUT_MILLIS,
+        new Period("P1D"),
+        new Period("PT30S"),
+        useEarliestOffset,
+        new Period("PT30M"),
+        lateMessageRejectionPeriod,
+        earlyMessageRejectionPeriod
+    );
+
+    KafkaIndexTaskClientFactory taskClientFactory = new KafkaIndexTaskClientFactory(
+        null,
+        null
+    )
+    {
+      @Override
+      public KafkaIndexTaskClient build(
+          TaskInfoProvider taskInfoProvider,
+          String dataSource,
+          int numThreads,
+          Duration httpTimeout,
+          long numRetries
+      )
+      {
+        Assert.assertEquals(TEST_CHAT_THREADS, numThreads);
+        Assert.assertEquals(TEST_HTTP_TIMEOUT.toStandardDuration(), httpTimeout);
+        Assert.assertEquals(TEST_CHAT_RETRIES, numRetries);
+        return taskClient;
+      }
+    };
+
+    return new TestableKafkaSupervisorWithOverriddenRecordSupplier(
+        taskStorage,
+        taskMaster,
+        indexerMetadataStorageCoordinator,
+        taskClientFactory,
+        objectMapper,
+        new KafkaSupervisorSpec(
+            dataSchema,
+            tuningConfig,
+            kafkaSupervisorIOConfig,
+            null,
+            false,
+            taskStorage,
+            taskMaster,
+            indexerMetadataStorageCoordinator,
+            taskClientFactory,
+            objectMapper,
+            new NoopServiceEmitter(),
+            new DruidMonitorSchedulerConfig(),
+            rowIngestionMetersFactory
+        ),
+        rowIngestionMetersFactory,
+        recordSupplier
     );
   }
 
@@ -3006,5 +3144,37 @@ public class KafkaSupervisorTest extends EasyMockSupport
     }
   }
 
+  private static class TestableKafkaSupervisorWithOverriddenRecordSupplier extends TestableKafkaSupervisor
+  {
+    private final RecordSupplier<Integer, Long> recordSupplierToReturn;
 
+    public TestableKafkaSupervisorWithOverriddenRecordSupplier (
+        TaskStorage taskStorage,
+        TaskMaster taskMaster,
+        IndexerMetadataStorageCoordinator indexerMetadataStorageCoordinator,
+        KafkaIndexTaskClientFactory taskClientFactory,
+        ObjectMapper mapper,
+        KafkaSupervisorSpec spec,
+        RowIngestionMetersFactory rowIngestionMetersFactory,
+        RecordSupplier<Integer, Long> recordSupplierToReturn
+    )
+    {
+      super(
+          taskStorage,
+          taskMaster,
+          indexerMetadataStorageCoordinator,
+          taskClientFactory,
+          mapper,
+          spec,
+          rowIngestionMetersFactory
+      );
+      this.recordSupplierToReturn = recordSupplierToReturn;
+    }
+
+    @Override
+    protected RecordSupplier<Integer, Long> setupRecordSupplier()
+    {
+      return recordSupplierToReturn;
+    }
+  }
 }
