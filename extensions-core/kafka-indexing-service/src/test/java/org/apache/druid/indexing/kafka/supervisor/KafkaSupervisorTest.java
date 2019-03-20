@@ -2773,7 +2773,6 @@ public class KafkaSupervisorTest extends EasyMockSupport
     Assert.assertTrue(report.getPayload().getThrowableEvents().get(0).getThrowable() instanceof NonTransientStreamException);
     verifyAll();
 
-
     resetAll();
     mockRecordSupplier = mock(RecordSupplier.class);
     expect(mockRecordSupplier.getPartitionIds(anyObject()))

@@ -176,8 +176,8 @@ public class KafkaSupervisor extends SeekableStreamSupervisor<Integer, Long>
     KafkaSupervisorIOConfig ioConfig = spec.getIoConfig();
     Map<Integer, Long> partitionLag = getLagPerPartition(getHighestCurrentOffsets());
     List<SeekableStreamSupervisorReportPayload.ThrowableEvent> throwableEvents;
-    synchronized (exceptionEventQueue) {
-      throwableEvents = exceptionEventQueue.toList();
+    synchronized (throwableEventQueue) {
+      throwableEvents = throwableEventQueue.toList();
     }
     return new KafkaSupervisorReportPayload(
         spec.getDataSchema().getDataSource(),
