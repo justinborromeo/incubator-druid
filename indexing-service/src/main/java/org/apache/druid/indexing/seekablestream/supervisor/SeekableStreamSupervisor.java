@@ -2903,7 +2903,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
   protected abstract boolean isEndOfShard(SequenceOffsetType seqNum);
 
   /**
-   * @param t the throwable to store
+   * @param t                       the throwable to store
    * @param nonStreamExceptionState an Optional containing the state to set if the Throwable is not a stream
    *                                exception.  If the Optional is empty, the supervisor state will not be
    *                                changed.
@@ -2916,7 +2916,7 @@ public abstract class SeekableStreamSupervisor<PartitionIdType, SequenceOffsetTy
       setState(State.LOST_CONTACT_WITH_STREAM);
     } else if (t instanceof NonTransientStreamException || t instanceof PossiblyTransientStreamException) {
       setState(State.UNABLE_TO_CONTACT_STREAM);
-    } else if (nonStreamExceptionState.isPresent()){
+    } else if (nonStreamExceptionState.isPresent()) {
       setState(nonStreamExceptionState.get());
     }
     log.debug(t, "full stack trace");

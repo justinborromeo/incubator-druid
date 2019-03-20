@@ -62,11 +62,9 @@ import org.apache.druid.indexing.overlord.supervisor.SupervisorReport;
 import org.apache.druid.indexing.seekablestream.SeekableStreamIndexTaskRunner.Status;
 import org.apache.druid.indexing.seekablestream.SeekableStreamPartitions;
 import org.apache.druid.indexing.seekablestream.common.RecordSupplier;
-import org.apache.druid.indexing.seekablestream.common.StreamPartition;
 import org.apache.druid.indexing.seekablestream.exceptions.NonTransientStreamException;
 import org.apache.druid.indexing.seekablestream.exceptions.PossiblyTransientStreamException;
 import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisor;
-import org.apache.druid.indexing.seekablestream.supervisor.SeekableStreamSupervisorReportPayload;
 import org.apache.druid.indexing.seekablestream.supervisor.TaskReportData;
 import org.apache.druid.java.util.common.DateTimes;
 import org.apache.druid.java.util.common.ISE;
@@ -2766,11 +2764,18 @@ public class KafkaSupervisorTest extends EasyMockSupport
 
     SupervisorReport<KafkaSupervisorReportPayload> report = supervisor.getStatus();
     Assert.assertEquals(1, report.getPayload().getThrowableEvents().size());
-    Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
-                        report.getPayload().getThrowableEvents().get(0).getSupervisorState());
-    Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
-                        report.getPayload().getCurrentState());
-    Assert.assertTrue(report.getPayload().getThrowableEvents().get(0).getThrowable() instanceof NonTransientStreamException);
+    Assert.assertEquals(
+        SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
+        report.getPayload().getThrowableEvents().get(0).getSupervisorState()
+    );
+    Assert.assertEquals(
+        SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
+        report.getPayload().getCurrentState()
+    );
+    Assert.assertTrue(report.getPayload()
+                            .getThrowableEvents()
+                            .get(0)
+                            .getThrowable() instanceof NonTransientStreamException);
     verifyAll();
 
     resetAll();
@@ -2805,9 +2810,14 @@ public class KafkaSupervisorTest extends EasyMockSupport
 
     report = supervisor.getStatus();
     Assert.assertEquals(1, report.getPayload().getThrowableEvents().size());
-    Assert.assertEquals(SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
-                        report.getPayload().getThrowableEvents().get(0).getSupervisorState());
-    Assert.assertTrue(report.getPayload().getThrowableEvents().get(0).getThrowable() instanceof PossiblyTransientStreamException);
+    Assert.assertEquals(
+        SeekableStreamSupervisor.State.UNABLE_TO_CONTACT_STREAM,
+        report.getPayload().getThrowableEvents().get(0).getSupervisorState()
+    );
+    Assert.assertTrue(report.getPayload()
+                            .getThrowableEvents()
+                            .get(0)
+                            .getThrowable() instanceof PossiblyTransientStreamException);
   }
 
   private void addSomeEvents(int numEventsPerPartition) throws Exception
@@ -3149,7 +3159,7 @@ public class KafkaSupervisorTest extends EasyMockSupport
   {
     private final RecordSupplier<Integer, Long> recordSupplierToReturn;
 
-    public TestableKafkaSupervisorWithOverriddenRecordSupplier (
+    public TestableKafkaSupervisorWithOverriddenRecordSupplier(
         TaskStorage taskStorage,
         TaskMaster taskMaster,
         IndexerMetadataStorageCoordinator indexerMetadataStorageCoordinator,
