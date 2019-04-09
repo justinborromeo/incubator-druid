@@ -139,6 +139,9 @@ public class AppenderatorImpl implements Appenderator
   private final AtomicInteger rowsCurrentlyInMemory = new AtomicInteger();
   private final AtomicInteger totalRows = new AtomicInteger();
   private final AtomicLong bytesCurrentlyInMemory = new AtomicLong();
+  // We require a separate count from sinks.size() because sinks isn't emptied when a push is triggered on a stream
+  // indexing task...rather, it is only emptied when the segment is handed off
+  private final AtomicInteger segmentsCurrentlyInMemory = new AtomicInteger();
   // Synchronize persisting commitMetadata so that multiple persist threads (if present)
   // and abandon threads do not step over each other
   private final Lock commitLock = new ReentrantLock();
@@ -327,7 +330,13 @@ public class AppenderatorImpl implements Appenderator
         isPersistRequired = true;
       }
     }
-    return new AppenderatorAddResult(identifier, sink.getNumRows(), sinks.size(), isPersistRequired, addResult.getParseException());
+    return new AppenderatorAddResult(
+        identifier,
+        sink.getNumRows(),
+        segmentsCurrentlyInMemory.get(),
+        isPersistRequired,
+        addResult.getParseException()
+    );
   }
 
   @Override
@@ -404,6 +413,7 @@ public class AppenderatorImpl implements Appenderator
       }
 
       sinks.put(identifier, retVal);
+      segmentsCurrentlyInMemory.incrementAndGet();
       metrics.setSinkCount(sinks.size());
       sinkTimeline.add(retVal.getInterval(), retVal.getVersion(), identifier.getShardSpec().createChunk(retVal));
     }
@@ -610,6 +620,7 @@ public class AppenderatorImpl implements Appenderator
       }
       theSinks.put(identifier, sink);
       if (sink.finishWriting()) {
+        segmentsCurrentlyInMemory.set(0);
         totalRows.addAndGet(-sink.getNumRows());
       }
     }
@@ -1062,6 +1073,7 @@ public class AppenderatorImpl implements Appenderator
         );
         rowsSoFar += currSink.getNumRows();
         sinks.put(identifier, currSink);
+        segmentsCurrentlyInMemory.incrementAndGet();
         sinkTimeline.add(
             currSink.getInterval(),
             currSink.getVersion(),

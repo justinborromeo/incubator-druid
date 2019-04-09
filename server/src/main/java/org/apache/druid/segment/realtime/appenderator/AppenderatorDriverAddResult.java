@@ -128,7 +128,8 @@ public class AppenderatorDriverAddResult
   public boolean isPushRequired(
       @Nullable Integer maxRowsPerSegment,
       @Nullable Long maxTotalRows,
-      @Nullable Integer maxTotalSegments)
+      @Nullable Integer maxTotalSegments
+  )
   {
     boolean overThreshold = false;
     if (maxRowsPerSegment != null) {

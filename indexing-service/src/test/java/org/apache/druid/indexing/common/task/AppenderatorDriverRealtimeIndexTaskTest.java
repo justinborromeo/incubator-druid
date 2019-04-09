@@ -592,6 +592,73 @@ public class AppenderatorDriverRealtimeIndexTaskTest
     Assert.assertEquals(TaskState.SUCCESS, taskStatus.getStatusCode());
   }
 
+  @Test(timeout = 60_000_000L)
+  public void testMaxTotalSegments() throws Exception
+  {
+    int numRows = 40;
+    // Expect 2 segments as we will hit maxTotalRows
+    expectPublishedSegments(numRows);
+
+    final AppenderatorDriverRealtimeIndexTask task =
+        makeRealtimeTaskWithMaxTotalSegments(null, Integer.MAX_VALUE, 5);
+    final ListenableFuture<TaskStatus> statusFuture = runTask(task);
+
+    // Wait for firehose to show up, it starts off null.
+    while (task.getFirehose() == null) {
+      Thread.sleep(50);
+    }
+
+    final TestFirehose firehose = (TestFirehose) task.getFirehose();
+
+    for (int i = 0; i < numRows; i++) {
+      firehose.addRows(
+          ImmutableList.of(
+              ImmutableMap.of("t", now.plusDays(i % 9).getMillis(), "dim1", "foo-" + i, "met1", "1")
+          )
+      );
+    }
+
+    // Stop the firehose, this will drain out existing events.
+    firehose.close();
+
+    // Wait for publish.
+    Collection<DataSegment> publishedSegments = awaitSegments();
+
+    // Check metrics.
+    Assert.assertEquals(numRows, task.getRowIngestionMeters().getProcessed());
+    Assert.assertEquals(0, task.getRowIngestionMeters().getThrownAway());
+    Assert.assertEquals(0, task.getRowIngestionMeters().getUnparseable());
+
+    // Do some queries.
+    Assert.assertEquals(numRows, sumMetric(task, null, "rows").longValue());
+    Assert.assertEquals(numRows, sumMetric(task, null, "met1").longValue());
+
+    awaitHandoffs();
+
+    Assert.assertEquals(numRows, publishedSegments.size());
+    for (DataSegment publishedSegment : publishedSegments) {
+      Pair<Executor, Runnable> executorRunnablePair = handOffCallbacks.get(
+          new SegmentDescriptor(
+              publishedSegment.getInterval(),
+              publishedSegment.getVersion(),
+              publishedSegment.getShardSpec().getPartitionNum()
+          )
+      );
+      Assert.assertNotNull(
+          publishedSegment + " missing from handoff callbacks: " + handOffCallbacks,
+          executorRunnablePair
+      );
+
+      // Simulate handoff.
+      executorRunnablePair.lhs.execute(executorRunnablePair.rhs);
+    }
+    handOffCallbacks.clear();
+
+    // Wait for the task to finish.
+    final TaskStatus taskStatus = statusFuture.get();
+    Assert.assertEquals(TaskState.SUCCESS, taskStatus.getStatusCode());
+  }
+
   @Test(timeout = 60_000L)
   public void testTransformSpec() throws Exception
   {
@@ -1317,7 +1384,28 @@ public class AppenderatorDriverRealtimeIndexTaskTest
         0,
         1,
         maxRowsPerSegment,
-        maxTotalRows
+        maxTotalRows,
+        null
+    );
+  }
+
+  private AppenderatorDriverRealtimeIndexTask makeRealtimeTaskWithMaxTotalSegments(
+      final String taskId,
+      final Integer maxRowsPerSegment,
+      final Integer maxTotalSegments
+  )
+  {
+    return makeRealtimeTask(
+        taskId,
+        TransformSpec.NONE,
+        true,
+        0,
+        true,
+        0,
+        1,
+        maxRowsPerSegment,
+        1500L,
+        maxTotalSegments
     );
   }
 
@@ -1354,6 +1442,7 @@ public class AppenderatorDriverRealtimeIndexTaskTest
         maxParseExceptions,
         maxSavedParseExceptions,
         1000,
+        null,
         null
     );
   }
@@ -1367,7 +1456,8 @@ public class AppenderatorDriverRealtimeIndexTaskTest
       final Integer maxParseExceptions,
       final Integer maxSavedParseExceptions,
       final Integer maxRowsPerSegment,
-      final Long maxTotalRows
+      final Long maxTotalRows,
+      final Integer maxTotalSegments
   )
   {
     ObjectMapper objectMapper = new DefaultObjectMapper();
@@ -1407,6 +1497,7 @@ public class AppenderatorDriverRealtimeIndexTaskTest
         null,
         maxRowsPerSegment,
         maxTotalRows,
+        maxTotalSegments,
         null,
         null,
         null,
@@ -1448,7 +1539,7 @@ public class AppenderatorDriverRealtimeIndexTaskTest
   {
     Assert.assertTrue(
         "Timed out waiting for segments to be published",
-        segmentLatch.await(1, TimeUnit.MINUTES)
+        segmentLatch.await(100, TimeUnit.MINUTES) // TODO change back to 1 minute
     );
 
     return publishedSegments;
