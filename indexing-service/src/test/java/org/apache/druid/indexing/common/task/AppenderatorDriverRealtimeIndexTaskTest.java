@@ -596,8 +596,7 @@ public class AppenderatorDriverRealtimeIndexTaskTest
   public void testMaxTotalSegments() throws Exception
   {
     int numRows = 40;
-    // Expect 2 segments as we will hit maxTotalRows
-    expectPublishedSegments(numRows);
+    expectPublishedSegments(20);
 
     final AppenderatorDriverRealtimeIndexTask task =
         makeRealtimeTaskWithMaxTotalSegments(null, Integer.MAX_VALUE, 5);
@@ -610,10 +609,11 @@ public class AppenderatorDriverRealtimeIndexTaskTest
 
     final TestFirehose firehose = (TestFirehose) task.getFirehose();
 
-    for (int i = 0; i < numRows; i++) {
+    for (int i = 0; i < numRows / 2; i++) {
       firehose.addRows(
           ImmutableList.of(
-              ImmutableMap.of("t", now.plusDays(i % 9).getMillis(), "dim1", "foo-" + i, "met1", "1")
+              ImmutableMap.of("t", now.plusDays(i).getMillis(), "dim1", "foo-" + i, "met1", "1"),
+              ImmutableMap.of("t", now.plusDays(i).plusHours(1).getMillis(), "dim1", "foo-" + i, "met1", "1")
           )
       );
     }
