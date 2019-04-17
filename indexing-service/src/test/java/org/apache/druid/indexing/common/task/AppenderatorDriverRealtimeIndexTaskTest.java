@@ -595,8 +595,10 @@ public class AppenderatorDriverRealtimeIndexTaskTest
   @Test(timeout = 60_000_000L)
   public void testMaxTotalSegments() throws Exception
   {
-    int numRows = 40;
-    expectPublishedSegments(20);
+    int numRows = 12; // must be even since we're dividing by 2
+    int maxTotalSegments = 5;
+    int expectedNumSegments = 8;
+    expectPublishedSegments(expectedNumSegments);
 
     final AppenderatorDriverRealtimeIndexTask task =
         makeRealtimeTaskWithMaxTotalSegments(null, Integer.MAX_VALUE, 5);
@@ -613,7 +615,7 @@ public class AppenderatorDriverRealtimeIndexTaskTest
       firehose.addRows(
           ImmutableList.of(
               ImmutableMap.of("t", now.plusDays(i).getMillis(), "dim1", "foo-" + i, "met1", "1"),
-              ImmutableMap.of("t", now.plusDays(i).plusHours(1).getMillis(), "dim1", "foo-" + i, "met1", "1")
+              ImmutableMap.of("t", now.plusDays(i + 1).getMillis(), "dim1", "foo-" + i, "met1", "1")
           )
       );
     }
@@ -635,7 +637,7 @@ public class AppenderatorDriverRealtimeIndexTaskTest
 
     awaitHandoffs();
 
-    Assert.assertEquals(numRows, publishedSegments.size());
+    Assert.assertEquals(expectedNumSegments, publishedSegments.size()); // how many segments do we need
     for (DataSegment publishedSegment : publishedSegments) {
       Pair<Executor, Runnable> executorRunnablePair = handOffCallbacks.get(
           new SegmentDescriptor(
